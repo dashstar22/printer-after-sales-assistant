@@ -1,0 +1,54 @@
+# Java build outputs
+target/
+build/
+out/
+*.class
+.gradle/
+
+# IDE and editor local settings
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+application-local.yml
+application-local.yaml
+application-local.properties
+
+# Logs and temporary files
+*.log
+logs/
+*.tmp
+*.swp
+*.swo
+*~
+hs_err_pid*
+replay_pid*
+
+# Local-only vendor manuals, downloads and validation scratch data
+.local-validation/
+.qdrant-initialized
+__pycache__/
+*.py[cod]
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Private source material and runtime data
+.env.seed
+*.sql.gz
+*.sql.zip
+mysql-data/
+qdrant-data/

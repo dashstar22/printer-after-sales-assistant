@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>纸序 · 普通报修</title><link rel="stylesheet" href="/repair/style.css"><script type="module" src="/repair/app.js"></script></head>
+<body>
+<header><a href="/repair/" class="brand">纸序 <span>打印机售后</span></a><span id="identity">请登录</span><button id="logout" hidden>退出登录</button></header>
+<main>
+<div class="intro"><p class="eyebrow">普通报修</p><h1>把设备问题，交代清楚。</h1><p>保存现场信息，核对后提交。无需使用 AI 助手。</p></div>
+<p id="message" role="status" aria-live="polite" tabindex="-1">正在检查登录状态…</p>
+<section id="login-panel" hidden><h2>登录售后服务</h2><form id="login-form"><label for="username">账号</label><input id="username" autocomplete="username" required><label for="password">密码</label><input id="password" type="password" autocomplete="current-password" required><button type="submit">登录</button></form></section>
+<section id="staff-panel" hidden><h2>客服身份已登录</h2><p>当前入口供客户填写普通报修。客服可通过已开放的工单接口处理企业工单；客服工作台页面尚未接入。</p></section>
+<div id="customer-panel" hidden>
+<section id="recovery" hidden><h2>继续上次报修</h2><p id="recovery-text">已找到本标签页的报修定位。请先查询服务端结果。</p><div class="actions"><button id="recover">查询上次操作 / 读取草稿</button><button id="retry" hidden>使用原操作重试提交</button></div></section>
+<div class="columns">
+<section><div class="section-title"><h2>1. 填写并保存</h2><button id="new-draft" class="secondary">新建草稿</button></div><p id="draft-meta">尚未保存草稿</p>
+<form id="draft-form" novalidate>
+<label for="order">本人设备订单</label><select id="order" required><option value="">正在读取订单…</option></select><p id="order-info" class="hint"></p>
+<label for="symptom">故障描述 <small>必填，最多 2000 字</small></label><textarea id="symptom" rows="4" required></textarea>
+<label for="extra">补充信息 <small>必填，最多 2000 字</small></label><textarea id="extra" rows="3" required></textarea>
+<label for="contact">联系人 <small>必填，最多 100 字</small></label><input id="contact" autocomplete="off" required>
+<label for="contactMethod">联系方式 <small>必填，最多 200 字</small></label><input id="contactMethod" autocomplete="off" required>
+<div class="actions"><button type="submit" id="save">保存草稿</button><button type="button" id="reload-draft" class="secondary" disabled>重新读取已保存内容</button></div>
+</form></section>
+<section><h2>2. 核对并确认</h2><p>这里展示已保存的内容。修改后请重新保存、核对并确认。</p><dl id="review"><dt>报修内容</dt><dd>保存草稿后在此核对。</dd></dl>
+<label class="check"><input id="agreed" type="checkbox" disabled>我已核对以上设备及完整报修内容</label><button id="confirm" disabled>确认以上内容</button><p id="confirmation-meta" class="hint">尚未确认，不会创建工单。</p>
+<h2 class="submit-title">3. 提交报修</h2><p>仅在提交成功或查询到已提交结果后显示工单编号。</p><button id="execute" disabled>提交已确认报修</button>
+</section></div>
+<section id="detail-panel" hidden><div class="section-title"><h2>报修工单</h2><button id="refresh-detail" class="secondary">刷新工单结果</button></div><dl id="ticket-detail"></dl><h3>处理时间线</h3><ol id="events"></ol></section>
+<section><div class="section-title"><h2>我的工单</h2><button id="refresh-list" class="secondary">刷新列表</button></div><p class="hint">显示最近 20 张工单，点击查看快照及处理记录。</p><ul id="tickets"></ul></section>
+</div>
+</main><footer>纸序 · 普通报修入口　<span>模拟订单会在设备信息中明确标注</span></footer>
+</body></html>

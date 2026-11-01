@@ -1,0 +1,120 @@
+{
+  "scope": "Same-origin service pages and bundled third-party assets.",
+  "lucideVersion": "1.66.0",
+  "lucideSourceCommit": "a630cec77eac6568b989e87e4947a8bfe45caacd",
+  "sources": [
+    {
+      "path": "assets/icons/arrow-up-right.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/icons/arrow-up-right.svg",
+      "sha256": "50b2503b9d11881142255466b7e3461d022b919735841c321d72003ac9959fe1",
+      "bytes": 260
+    },
+    {
+      "path": "assets/icons/play.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/icons/play.svg",
+      "sha256": "d7c34786135922a92b6896f6c2384ceeb0346afbf6041dc79982011411409833",
+      "bytes": 306
+    },
+    {
+      "path": "assets/icons/rotate-ccw.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/icons/rotate-ccw.svg",
+      "sha256": "622685386ab4017eabfde01cd74550a20b1924df233b353f73b6b155371f2afd",
+      "bytes": 297
+    },
+    {
+      "path": "assets/icons/pause.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/icons/pause.svg",
+      "sha256": "f122ec4ea7f5693a0b1baafa9c708b53980dc87b4aacb297c6e6f71c1a4c115c",
+      "bytes": 313
+    },
+    {
+      "path": "assets/icons/arrow-right.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/icons/arrow-right.svg",
+      "sha256": "288397fdb73bb4f783cf9eabb726ff47357df1d4e3f1201dd748090579f108b9",
+      "bytes": 261
+    },
+    {
+      "path": "assets/icons/message-square-text.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/icons/message-square-text.svg",
+      "sha256": "b2564066702194c600d91b6def8e897cdbf4c6205c80d39e459ff0a12e13950d",
+      "bytes": 408
+    },
+    {
+      "path": "licenses/Lucide.txt",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/a630cec77eac6568b989e87e4947a8bfe45caacd/LICENSE",
+      "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+      "bytes": 3208
+    },
+    {
+      "path": "licenses/Noto-Sans-SC-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt",
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+      "bytes": 4388
+    },
+    {
+      "path": "licenses/Manrope-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/manrope/OFL.txt",
+      "sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b",
+      "bytes": 4387
+    },
+    {
+      "path": "assets/fonts/noto-sans-sc.woff2",
+      "url": "https://fonts.gstatic.com/l/font?kit=k3kXo84MPvpLmixcA63oeALhLJAt-ex-c08amfM-PWjf4hBrd5TxfdPUoa5SwCDpuoutELiIeouqtUMx4nz5RJDoMvalUXmTO7hmYME8jcq4XRLEGBIiU1Gt0TX6x_h-GW72je4_WDTnu7txnu5LQL2EhBHNhEg_ivk0eLN1YVb_aBiP_UchBvSGr0xjo0a7JnoZknOuWwGqB6iMz0nBLlDyjpkzwcBJt_hu9Rvvs6CLoNxKPDH9X1s97NVNmbLNcvuGuAMLdeHaf6vz0mCZ-zaHhVftj_6519tjDK7HxEA2ouXCBOq0mhpsBEWkQHEwb5Uih9HOY0tquMsWzOJl7zmi0hnjW88fxgs8wVWzAZug5EoQN9_f3JpZZLXZ2K-JRBnAmlPrJ2TvSUI-8CFrPdIM_bX4b1rLj1yXRD0Y0HXpFYswxDrjBpPMQ7yjmFYYNVbI-ZNIUUB-Tgy3_Ot2CfLmmprZK8merP-IlopU-ayfa652SXisdz0cOC5FlrNrWBxgvuhn5zPy9NZ60OnqMLHmnMYAwCWSfvUwIzSdNygtjeNvKwzxOH6Zhn1krz9xjN_V-l6yWNan2nQE63dX3Nqisrc_HCJ2XqRlwSV1j4EBgMSSpsP_OmknPvDxQeyvjUo4A4_dAimO1YjjAoppgJvrljvu8SwcA8Pg85cjIt3zxYYBbV43PfrZ3FWQVV8qVEC1-IbxR4jn8e5dB68hb5YgzNjroM0zitYN05L3DEcFWNaVht4y1Fh7QuAl6xdK9lclEv5GnmKvxJtOUdxZzBl6uQCWiWj-WRQTNzau60HV55DPhLIvdUYhv92pLeHVWusACoqnnTVz9_SdJ3DnFkt94YWOx42IkeoXiojHi83pPFXcuRQ1Ae18FTtRI98yHfMevoUobsFtUU-Hp6D6DgWzR1DjlgU9zQ3RCySw2RxoII7bJEJ56vdHY8YbsjqdLLHU-LbLtq5mysDCQcm55RrzMR5uF3qIUHy3XJmbCSe6UC7km3CH7b65b5J-Rky86N5FN8L8DGKMWSwXpStAj51gN7DOSD48VJPUPkddCRlxVSAkjEgJKErA2ogJTNjVPzFrWHnQf8yWxr4BffmyRVBSZrqZECGblYVJ7F3KLcDilNk-iglTtFVsQGSAPNP1gMlDzswaqOjUo5urVfW9ZfleG8SwGO1ckBU3LvZjSzodGBsjM5JpDBINI-L6hoa6Ztsaq2tnGNX04kCWnyv0Roj4uIyvsdXlSMRslM0uwvSgrC6q37EPKgqW27zJ9LUbRJZ--o5v0bIF3ZKAdVY8EGk-zHwDMLH_VE3XmQ37mh2NH6w4omKMxizGyke5ZGopUlr3eng2e7lIaCp0NHlUfiISEtARvneShmKuIyrCMjX5G9J27oArM5ree2OEwtX-65OxwUpBP0DIGLUE_Mw0M-e7Xl3WMA&skey=cf0bb10b5602fdc3&v=v41",
+      "sha256": "094e577692cda5ce0afdc03b57765c27461243e179b067010527ecc5ed08808f",
+      "bytes": 101172
+    },
+    {
+      "path": "assets/fonts/manrope.woff2",
+      "url": "https://fonts.gstatic.com/l/font?kit=xn7gYHE41ni1AdIRsgWjCv3wUvG-V3wGY_rz7oTAOISDTvL3hkDc7T8opEVVq9bxPgQnNuFTyFj6jzS6iVckPf0gNhJkw6CdMWEbpmd0gzlYiMmgEw&skey=c397ded15edc0853&v=v23",
+      "sha256": "666ea35a191db69a8d88a20bb782f42c0afb2409ad3288b61ed2c7634d671ec3",
+      "bytes": 11612
+    },
+    {
+      "path": "vendor/motion-14.9.0.js",
+      "package": "motion",
+      "version": "14.9.0",
+      "license": "MIT",
+      "repository": "https://github.com/motiondivision/motion",
+      "sourceCommit": "4823aafd45fe2fa9e6d1fcd0f58880ea498a7b32",
+      "sha256": "08423884b313dacbd12fdaff2d002a5b862c8009c17da285a8460efad98d63c3",
+      "bytes": 179011
+    },
+    {
+      "path": "vendor/tsparticles-basic-4.5.0.js",
+      "package": "@tsparticles/basic",
+      "version": "4.5.0",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tsparticles/tsparticles.git",
+        "directory": "bundles/basic"
+      },
+      "sha256": "ef0cc5e0818f6a43116b2830002538a962242c7374aacae379509564dc71589c",
+      "bytes": 96932
+    },
+    {
+      "path": "assets/brand.svg",
+      "source": "Reused from prototype/impeccable-review/b-motion/assets/brand.svg",
+      "sha256": "a82052a58bb67d2b96433818d5869f941b791b10705c2785cff82b53f866613c",
+      "bytes": 162
+    },
+    {
+      "path": "licenses/Motion-MIT.txt",
+      "source": "Reused from prototype/impeccable-review/b-motion/licenses/Motion-MIT.txt",
+      "sha256": "1bf0dc3f7727723e5a032ed12164a47cf92c05204cb1a3485f123c24e2833ed1",
+      "bytes": 1100
+    },
+    {
+      "path": "licenses/tsParticles-MIT.txt",
+      "source": "Reused from prototype/impeccable-review/b-motion/licenses/tsParticles-MIT.txt",
+      "sha256": "c5c18dbc27f490f2ef90e0b574b8c40f534e495d2cb8a6f1c4bb1183a9c381a4",
+      "bytes": 1069
+    },
+    {
+      "path": "assets/service-background.svg",
+      "source": "Original abstract SVG created for this source release",
+      "sha256": "6a227fb075faccad2e8532b46d5fe750606da8d2681404f5bf3dbe1945b19870",
+      "bytes": 1060
+    }
+  ]
+}
