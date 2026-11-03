@@ -56,7 +56,7 @@ final class KnowledgeTextExtractor {
     static void parameters(int size,int overlap){
         if(size<100 || size>2000 || overlap<0 || overlap>=size)throw fail("COMMAND_INVALID");
     }
-    private static String decode(byte[] bytes){
+    static String decode(byte[] bytes){
         try {
             String text=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
@@ -66,7 +66,7 @@ final class KnowledgeTextExtractor {
             return text.replace("\r\n","\n").replace('\r','\n');
         }catch(CharacterCodingException failure){throw fail("TEXT_INVALID");}
     }
-    private static List<Located> pdf(byte[] bytes,int[] empty){
+    static List<Located> pdf(byte[] bytes,int[] empty){
         try(var document=Loader.loadPDF(bytes)){
             if(document.getNumberOfPages()>MAX_PAGES)throw fail("LIMIT_EXCEEDED");
             var stripper=new PDFTextStripper();stripper.setSortByPosition(true);

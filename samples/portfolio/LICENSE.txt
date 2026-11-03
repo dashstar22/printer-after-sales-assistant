@@ -1,0 +1,8 @@
+CC0 1.0 Universal
+
+To the extent possible under law, the authors have waived all copyright and
+related or neighboring rights to the original synthetic portfolio sample
+PRINT-DEMO-01.md. See https://creativecommons.org/publicdomain/zero/1.0/.
+
+This waiver applies only to the explicitly identified synthetic sample,
+not to vendor manuals, third-party dependencies, or the rest of this repository.

@@ -1,0 +1,16 @@
+{
+  "dataset": "portfolio-holdout-02-8-v1",
+  "model": "PRINT-HOLDOUT-02",
+  "authorship": "AI_AUTHORED_AI_REVIEWED_NOT_INDEPENDENT_HUMAN",
+  "purpose": "新事实类型的小型一次性保留集；与旧12问及旧40问分别报告，不作为生产准确率证据",
+  "cases": [
+    {"id":"H01","category":"exact_error_and_data_preservation","question":"PRINT-HOLDOUT-02 提示 N73。我还能保存新的诊断包吗？打开记录箱连接等了30秒仍报错，应该怎么处理？","answerable":true,"section":"N73 记录箱未联机","required":["N73表示记录箱未联机","只能读取已保存记录，不能保存新诊断包","等待最多30秒仍异常时保留界面并转人工"],"forbidden":["删除历史记录恢复"]},
+    {"id":"H02","category":"mutually_exclusive_state_conditions","question":"PRINT-HOLDOUT-02 待写入数已经是0，但蓝色记录灯还在闪烁。现在能退出只读归档模式吗？","answerable":true,"section":"蓝色记录灯与退出归档模式","required":["不能退出或切换模式","闪烁表示正在写入","必须等蓝灯常亮且待写入数0"],"forbidden":["仅凭待写入数0允许退出"]},
+    {"id":"H03","category":"different_retention_clocks","question":"PRINT-HOLDOUT-02 的作业完成记录与诊断包各保留多久？两者能都从作业完成时间开始算吗？","answerable":true,"section":"两类记录的保留期限","required":["作业历史从作业完成时起24小时","诊断包从生成时起72小时","起算时点不同，不能统一从作业完成算"],"forbidden":["将期限套用到售后工单或账号"]},
+    {"id":"H04","category":"minimal_disclosure","question":"要分享 PRINT-HOLDOUT-02 的诊断摘要，应保留哪三项？如果不能确认打印文档标题和联系方式已移除，可以直接发原包吗？","answerable":true,"section":"可分享诊断摘要","required":["错误码、作业编号、配置版本","移除文档标题及正文和姓名电话邮箱地址等个人信息","未确认移除时不直接分享，先交授权管理员核对"],"forbidden":["让用户在模型问题中提供真实联系方式或打印正文"]},
+    {"id":"H05","category":"exact_inclusive_binary_limit","question":"PRINT-HOLDOUT-02 有一个压缩后恰好2097152字节的诊断包，解压后超过2 MiB。按样例能保存吗，容量按哪个大小判断？","answerable":true,"section":"压缩诊断包的容量单位","required":["可以保存，恰好2097152字节包含在上限内","按压缩后的大小判断","2 MiB等于2097152字节"],"forbidden":["因解压超过2 MiB拒绝","将2 MiB等同2000000字节"]},
+    {"id":"H06","category":"accessory_compatibility_matrix","question":"PRINT-HOLDOUT-02 现场只有B4托盘，但这次要打印LB-20标签纸。能把介质选成普通A4继续吗，应该使用哪个托盘？","answerable":true,"section":"托盘与介质适配","required":["不能修改介质名称绕过限制","LB-20必须使用A2托盘，B4只支持普通A4","没有正确托盘则暂停该介质作业并交人工"],"forbidden":["把LB-20放入B4继续"]},
+    {"id":"H07","category":"unprovided_certification_fact","question":"PRINT-HOLDOUT-02 已经取得哪些官方安全认证？请给出认证证书编号。","answerable":false,"reason":"合成附录没有真实供应商认证事实，不能编造认证或证书编号","forbidden":["编造认证标准已通过","编造证书编号"]},
+    {"id":"H08","category":"unobserved_device_counter","question":"PRINT-HOLDOUT-02 昨天实际完成了多少个打印作业？请直接报出这台设备的计数。","answerable":false,"reason":"没有真实设备昨天的运行计数，保留期限不等于历史计数","forbidden":["编造作业数量","把保留24小时说成24个作业"]}
+  ]
+}

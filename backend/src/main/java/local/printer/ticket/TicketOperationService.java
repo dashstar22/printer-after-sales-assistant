@@ -21,12 +21,14 @@ public class TicketOperationService {
     private final OrderMapper orders;
     private final ConfirmationService confirmations;
     private final Clock clock;
+    private final TicketHandoffService handoff;
     private final TransactionTemplate write;
     private final TransactionTemplate read;
 
     public TicketOperationService(TicketMapper mapper, OrderMapper orders, ConfirmationService confirmations,
-                                  Clock clock, PlatformTransactionManager transactions) {
+                                  Clock clock, PlatformTransactionManager transactions, TicketHandoffService handoff) {
         this.mapper = mapper; this.orders = orders; this.confirmations = confirmations; this.clock = clock;
+        this.handoff = handoff;
         write = new TransactionTemplate(transactions);
         write.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         // The initial operation lookup must not pin an old snapshot while waiting for the draft lock.
@@ -36,12 +38,15 @@ public class TicketOperationService {
         read.setReadOnly(true);
         read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
     }
-    public record Input(String confirmationId, long draftId, long expectedVersion) {
+    public record Input(String confirmationId, long draftId, long expectedVersion, String conversationId) {
+        public Input(String confirmationId, long draftId, long expectedVersion) { this(confirmationId,draftId,expectedVersion,null); }
         @Override public String toString() { return "OperationInput[REDACTED]"; }
     }
     public record Result(TicketOperationResponse response, boolean created) {}
     public static class NotFound extends RuntimeException {}
     public static class Conflict extends RuntimeException {}
+
+    public void checkContext(long ticket,String conversation) { handoff.checkContextReplay(ticket,conversation); }
 
     // Intentionally no surrounding @Transactional: duplicate handling starts only AFTER template rollback.
     public Result execute(long customerId, String operationId, Input input) {
@@ -73,7 +78,10 @@ public class TicketOperationService {
                 || row.draftVersion() != input.expectedVersion()) throw new ConfirmationService.Conflict();
         binding(customerId, draft, row);
         // A committed result is recovered before expiry. Binding and ownership are never skipped.
-        if (row.ticketId() != null) return new Result(response(row, resultTicket(customerId, draft, row.ticketId())), false);
+        if (row.ticketId() != null) {
+            handoff.checkContextReplay(row.ticketId(), input.conversationId());
+            return new Result(response(row, resultTicket(customerId, draft, row.ticketId())), false);
+        }
         row = confirmations.validateUnconsumed(customerId, draft.id(), row.id(), operationId);
         Long ticketId = mapper.linkedTicket(draft.id());
         boolean created = ticketId == null;
@@ -85,10 +93,14 @@ public class TicketOperationService {
                 DraftService.text(draft.contact(), 100), DraftService.text(draft.contactMethod(), 200), "PENDING", 0, null));
             if (mapper.insertTicket(value) != 1) throw new Conflict();
             ticketId = value.getId();
+            handoff.bindContext(ticketId, customerId, draft.orderId(), input.conversationId());
             var event = new NewRow<>(new Event(null, ticketId, customerId, "CREATED", CREATED_NOTE, now()));
             if (mapper.insertEvent(event) != 1) throw new Conflict();
             ticket = resultTicket(customerId, draft, ticketId);
-        } else ticket = resultTicket(customerId, draft, ticketId);
+        } else {
+            handoff.checkContextReplay(ticketId, input.conversationId());
+            ticket = resultTicket(customerId, draft, ticketId);
+        }
         if (mapper.associateConfirmation(row, ticketId) != 1) throw new Conflict();
         return new Result(response(row, ticket), created);
     }

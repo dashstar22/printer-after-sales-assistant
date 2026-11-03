@@ -1,5 +1,6 @@
 import {serviceApi as api} from './api.js';
-import {el, button, link, field, pairs, orderLabel, orderInfo, trim} from './ui.js';
+import {el, button, link, field, orderLabel, orderInfo, trim} from './ui.js';
+import {answerStatus,answerDetails,mayReport,createAnswerFeedback} from './answer-view.js';
 
 const statusNames = {ANSWERED:'已返回回复', NO_EVIDENCE:'无法据资料确认', KNOWLEDGE_UNAVAILABLE:'资料暂时不可查询',
   NEEDS_INPUT:'请补充信息', RETRIEVAL_UNAVAILABLE:'资料暂时不可查询', RESULT_UNKNOWN:'助手结果待核对',
@@ -9,10 +10,13 @@ const statusNames = {ANSWERED:'已返回回复', NO_EVIDENCE:'无法据资料确
   MODEL_UNAVAILABLE:'模型暂时不可用', MODEL_TIMEOUT:'模型响应超时', TURN_TIMEOUT:'本轮等待超时', WRITE_RESULT_UNKNOWN:'写入结果待核对'};
 export function conversationScreen(host, ctx) {
   let detail = null, currentPage = 1, size = 20, selectedOrder = null, pendingTurn = null, busy = false;
-  let orders = [], messageText = '', note = '', epoch = 0, logResize = null;
+  let orders = [], messageText = '', note = '', epoch = 0, logResize = null, disposed = false;
   const root = el('section', null, 'assistant-layout'); host.replaceChildren(root);
+  const answerFeedback=createAnswerFeedback({userId:ctx.user.id,isActive:()=>!disposed,onAuthError:ctx.onAuthError});
+  function handoff(turnId){ctx.locator.save({repairHandoff:detail&&turnId?{conversationId:detail.id,turnId}:null});}
 
   function render() {
+    if(disposed)return;
     logResize?.disconnect();
     root.replaceChildren(); root.setAttribute('aria-busy',String(busy));
     const aside = el('aside', null, 'workspace-panel device-panel');
@@ -31,9 +35,9 @@ export function conversationScreen(host, ctx) {
       if(!selectedOrder || pendingTurn)return;
       // New empty conversation has no business side effects. Existing context is never reused for another order.
       const created=await api.write('/api/conversations',{orderId:selectedOrder});
-      ctx.locator.save({conversationId:created.id});detail=created;currentPage=1;messageText='';note='';render();
+      if(disposed)return;ctx.locator.save({conversationId:created.id});detail=created;currentPage=1;messageText='';note='';render();
     }),'primary-button'); start.id='new-conversation';start.disabled=busy||!selectedOrder||!!pendingTurn;aside.append(start);
-    aside.append(link('直接在线报修 →','#/customer/repair','fallback-link'));
+    const directReport=link('直接在线报修 →','#/customer/repair/new','fallback-link');directReport.addEventListener('click',()=>handoff([...(detail?.messages.items||[])].reverse().find(m=>m.role==='USER')?.turnId));aside.append(directReport);
     const panel=el('section',null,'workspace-panel chat-panel');
     const heading=el('div',null,'panel-heading');heading.append(el('h2','售后助手'),button('刷新消息',()=>ctx.run(()=>load(detail?.id,currentPage))));
     heading.lastChild.disabled=busy||!detail;panel.append(heading);
@@ -62,22 +66,15 @@ export function conversationScreen(host, ctx) {
       else if(reply&&['DRAFT_PREPARED','TICKET_CREATED','RESULT_UNKNOWN','WRITE_RESULT_UNKNOWN','PROCESSING'].includes(reply.status))
         item.append(el('p',statusNames[reply.status],'response-status'));
       item.append(el('p',reply?.text||message.content,'message-content'));
-      for(const source of reply?.citations||[]){
-        const ref=el('details',null,'citation');ref.append(el('summary',`${source.title} · ${source.simulated?'模拟资料':source.selfAuthored?'自编资料':'来源资料'}`));
-        ref.append(pairs([['型号',source.modelScope==='GENERAL'?'通用规则':(source.models||[]).join('、')],['版本',source.version],['定位',source.pageNumber?'第 '+source.pageNumber+' 页':source.section],['片段标识',source.pointId],['来源',source.source],['使用条件',source.useCondition]]),el('p',source.content,'source-content'));
-        try {const url=new URL(source.sourceUrl);if(['https:','http:'].includes(url.protocol)){
-          const a=link('查看来源网页',url.href);a.target='_blank';a.rel='noopener noreferrer';ref.append(a);
-        }} catch { /* No valid web source; retain textual provenance. */ }
-        item.append(ref);
-      }
+      if(reply){const label=answerStatus(reply);if(label)item.append(el('p',label,'answer-status'));item.append(answerDetails(reply,message.id));const panel=answerFeedback.panel(detail.id,message);if(panel)item.append(panel);}
       if(reply?.draft){
         const draft=reply.draft;
         item.append(link(`核对报修草稿 · 版本 ${draft.version}`,`#/customer/repair/${draft.id}`,'secondary-button'));
       }
       if(reply?.operation?.ticket)item.append(link('查看已提交工单',`#/customer/ticket/${reply.operation.ticket.id}`,'secondary-button'));
-      if(reply?.status==='NO_EVIDENCE' && !reply.draft){
+      if(mayReport(reply) && !reply.draft){
         const report=link('填写报修信息 →','#/customer/repair/new','conversation-repair-link');
-        report.addEventListener('click',()=>ctx.locator.save({repairHandoff:{conversationId:detail.id,turnId:message.turnId}}));
+        report.addEventListener('click',()=>handoff(message.turnId));
         item.append(report);
       }
       log.append(item);
@@ -109,15 +106,15 @@ export function conversationScreen(host, ctx) {
     root.querySelectorAll('button').forEach(b=>b.disabled ||= busy);
   }
   async function load(id,page=1,findPending=false){
-    if(!id)return;
+    if(!id||disposed)return;
     const value=await api.get(`/api/conversations/${encodeURIComponent(id)}?page=${page}&size=${size}`);
-    detail=value;currentPage=page;selectedOrder=value.orderId;
+    if(disposed)return;answerFeedback.refresh();detail=value;currentPage=page;selectedOrder=value.orderId;
     if(pendingTurn){
       // Read all pages only while reconciling a pending turn; normal browsing is paged.
       let found=value.messages.items.find(m=>m.role==='ASSISTANT'&&m.turnId===pendingTurn.turnId);
       if(findPending)for(let p=2;!found&&p<=value.messages.totalPages;p++){
         const batch=await api.get(`/api/conversations/${id}?page=${p}&size=${size}`);
-        found=batch.messages.items.find(m=>m.role==='ASSISTANT'&&m.turnId===pendingTurn.turnId);
+        if(disposed)return;found=batch.messages.items.find(m=>m.role==='ASSISTANT'&&m.turnId===pendingTurn.turnId);
       }
       if(found&&!['PROCESSING','RESULT_UNKNOWN','WRITE_RESULT_UNKNOWN'].includes(found.response?.status)){
         pendingTurn=null;ctx.locator.save({pendingTurn:null});messageText='';note='已恢复原轮次结果。';
@@ -126,7 +123,7 @@ export function conversationScreen(host, ctx) {
     render();
   }
   async function send(retry){
-    const content=trim(messageText);
+    if(disposed)return;const content=trim(messageText);
     if(!retry && (!content || [...content].length>4000))throw new Error('消息为必填，去除首尾空白后最多 4000 字。');
     if(!retry){
       pendingTurn={conversationId:detail.id,turnId:crypto.randomUUID(),content};
@@ -137,6 +134,7 @@ export function conversationScreen(host, ctx) {
     busy=true;note='正在回复…';render();
     try{
       const turn=await api.turn(pendingTurn.conversationId,{turnId:pendingTurn.turnId,content:pendingTurn.content});
+      if(disposed)return;
       if(!['PROCESSING','RESULT_UNKNOWN','WRITE_RESULT_UNKNOWN'].includes(turn.assistantMessage.response?.status)){
         pendingTurn=null;ctx.locator.save({pendingTurn:null});messageText='';note='';
       }else note='原轮次仍在处理，请稍后查询。';
@@ -160,5 +158,5 @@ export function conversationScreen(host, ctx) {
         selectedOrder=picked.id;ctx.locator.save({selectedOrderId:null});
       }else selectedOrder=detail?.orderId||orders[0]?.id||null;
     }finally{busy=false;render();}
-  }, dispose(){epoch++;logResize?.disconnect();root.remove();}};
+  }, dispose(){disposed=true;epoch++;answerFeedback.dispose();logResize?.disconnect();root.remove();}};
 }

@@ -16,6 +16,8 @@ import local.printer.knowledge.KnowledgeProcessingMapper.Processing;
 @ConditionalOnNotWebApplication
 @ConditionalOnProperty(name="app.knowledge.maintenance-enabled",havingValue="true")
 public class KnowledgePublicationService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private local.printer.operations.ExternalCallBudget externalBudget;
     private final KnowledgeMapper mapper;private final KnowledgeProcessingMapper processing;private final DataSource dataSource;
     private final TransactionTemplate tx;private final Environment env;
     public KnowledgePublicationService(KnowledgeMapper mapper,KnowledgeProcessingMapper processing,DataSource ds,PlatformTransactionManager tm,Environment env){
@@ -23,7 +25,7 @@ public class KnowledgePublicationService {
     }
     public record Result(int chunks,int embedded,boolean alreadyPublished,boolean active){}
     public Result publish(Path root,long id,int size,int overlap){
-        try{return execute(root,id,size,overlap);}catch(KnowledgeFailure failure){throw failure;}
+        try(var scope=local.printer.operations.ExternalCallBudget.scope("legacy:"+id,"TASK",120000)){return execute(root,id,size,overlap);}catch(KnowledgeFailure failure){throw failure;}
         catch(Exception failure){throw new KnowledgeFailure("KNOWLEDGE_DATABASE_ERROR",3);}
     }
     private Result execute(Path root,long id,int size,int overlap)throws Exception{
@@ -49,7 +51,7 @@ public class KnowledgePublicationService {
         }
         String hash=fresh.sourceHash(),metadata=KnowledgeIdentity.metadata(source),layout=KnowledgeIdentity.layout(source,chunks,size,overlap);
         if(source.contentHash()!=null&&!source.contentHash().equals(hash))throw conflict("SOURCE_CHANGED");
-        var client=new KnowledgeVectorClient(env);Processing old=processing.processing(source.id());
+        var client=new KnowledgeVectorClient(env,externalBudget);Processing old=processing.processing(source.id());
         if(old!=null&&(!old.layoutHash().equals(layout)||!old.metadataHash().equals(metadata)||!old.model().equals(client.model)
             ||old.dimensions()!=client.dimensions||!old.collectionName().equals(client.collection)||old.chunkSize()!=size||old.chunkOverlap()!=overlap))throw conflict("PROCESSING_CONFLICT");
         boolean ready=source.status().equals("READY");

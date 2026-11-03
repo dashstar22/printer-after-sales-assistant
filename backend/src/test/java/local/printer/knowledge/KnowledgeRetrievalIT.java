@@ -53,7 +53,7 @@ class KnowledgeRetrievalIT {
         assertFalse(s.toString().contains("private-body"));
     }
     @Test void additiveMigrationsAndNoAutomaticKnowledgeRows(){
-        assertEquals(List.of("1","2","3","4","5","6","7"),jdbc.queryForList("SELECT version FROM flyway_schema_history ORDER BY installed_rank",String.class));
+        assertEquals(local.printer.MigrationAssertions.versions(),jdbc.queryForList("SELECT version FROM flyway_schema_history ORDER BY installed_rank",String.class));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM knowledge_documents",Integer.class));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM knowledge_chunks",Integer.class));
     }

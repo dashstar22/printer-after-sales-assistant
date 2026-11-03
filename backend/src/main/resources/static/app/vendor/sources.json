@@ -94,19 +94,19 @@
     },
     {
       "path": "assets/brand.svg",
-      "source": "Reused from prototype/impeccable-review/b-motion/assets/brand.svg",
+      "source": "Original project brand mark",
       "sha256": "a82052a58bb67d2b96433818d5869f941b791b10705c2785cff82b53f866613c",
       "bytes": 162
     },
     {
       "path": "licenses/Motion-MIT.txt",
-      "source": "Reused from prototype/impeccable-review/b-motion/licenses/Motion-MIT.txt",
+      "source": "motiondivision/motion MIT license; original copyright retained",
       "sha256": "1bf0dc3f7727723e5a032ed12164a47cf92c05204cb1a3485f123c24e2833ed1",
       "bytes": 1100
     },
     {
       "path": "licenses/tsParticles-MIT.txt",
-      "source": "Reused from prototype/impeccable-review/b-motion/licenses/tsParticles-MIT.txt",
+      "source": "tsparticles/tsparticles MIT license; original copyright retained",
       "sha256": "c5c18dbc27f490f2ef90e0b574b8c40f534e495d2cb8a6f1c4bb1183a9c381a4",
       "bytes": 1069
     },

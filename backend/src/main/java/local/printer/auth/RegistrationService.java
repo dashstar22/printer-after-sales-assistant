@@ -24,21 +24,8 @@ public class RegistrationService {
     }
     public static final class AccountExists extends RuntimeException {}
 
+    /** Retired username/password registration contract; no unverified identity creation. */
     public Registered register(JsonNode body) {
-        if (body == null || !body.isObject() || !body.propertyNames().equals(Set.of("username", "password", "passwordConfirmation")))
-            throw new Invalid("请填写账号、密码和确认密码");
-        for (String key : body.propertyNames()) if (!body.get(key).isString()) throw new Invalid("注册信息格式不正确");
-        String username = body.get("username").asString().strip().toLowerCase(Locale.ROOT);
-        String password = body.get("password").asString();
-        if (!username.matches("[a-z0-9_]{4,32}")) throw new Invalid("账号须为 4–32 位字母、数字或下划线");
-        int length = password.codePointCount(0, password.length());
-        if (length < 8 || length > 64 || password.isBlank() || password.codePoints().anyMatch(Character::isISOControl))
-            throw new Invalid("密码须为 8–64 位有效字符");
-        if (password.getBytes(StandardCharsets.UTF_8).length > 72) throw new Invalid("密码过长，请缩短后重试");
-        if (!password.equals(body.get("passwordConfirmation").asString())) throw new Invalid("两次输入的密码不一致");
-        // The unique index resolves races. The SQL fixes the role, never accepting client authority.
-        try { users.registerCustomer(username, passwords.encode(password)); }
-        catch (DuplicateKeyException duplicate) { throw new AccountExists(); }
-        return new Registered(true, username);
+        throw new Invalid("请先申请邮箱验证链接，再设置密码完成注册");
     }
 }

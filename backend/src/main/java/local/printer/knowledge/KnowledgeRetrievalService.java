@@ -17,9 +17,14 @@ import tools.jackson.databind.json.JsonMapper;
 /** Internal read-only retrieval; callers must supply identity from the trusted session. */
 @Service
 public class KnowledgeRetrievalService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private local.printer.operations.ExternalCallBudget externalBudget;
     private static final JsonMapper JSON=JsonMapper.builder().build();
     private final KnowledgeMapper mapper;private final KnowledgeProcessingMapper processing;
     private final OrderService orders;private final Environment env;private final DataSource ds;private final TransactionTemplate read;
+    private HybridKnowledgeRetrieval hybrid;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void hybrid(HybridKnowledgeRetrieval value){this.hybrid=value;}
     public KnowledgeRetrievalService(KnowledgeMapper mapper,KnowledgeProcessingMapper processing,OrderService orders,
         Environment env,DataSource ds,PlatformTransactionManager tm){
         this.mapper=mapper;this.processing=processing;this.orders=orders;this.env=env;this.ds=ds;
@@ -31,7 +36,8 @@ public class KnowledgeRetrievalService {
         String source,String sourceUrl,String officialIndex,String termsUrl,String useCondition,boolean selfAuthored,boolean simulated){
         @Override public String toString(){return "Source[REDACTED]";}
     }
-    public record Result(String status,String reason,int candidates,int rejected,int pages,boolean truncated,double minScore,List<Source> sources){
+    public record Result(String status,String reason,int candidates,int rejected,int pages,boolean truncated,double minScore,List<Source> sources,Map<String,Object> trace){
+        public Result(String status,String reason,int candidates,int rejected,int pages,boolean truncated,double minScore,List<Source> sources){this(status,reason,candidates,rejected,pages,truncated,minScore,sources,Map.of("configuration","legacy-vector-v1"));}
         @Override public String toString(){return "Result[status="+status+", sources="+sources.size()+"]";}
     }
     public Result searchOwned(long customerId,long orderId,String query){
@@ -41,6 +47,7 @@ public class KnowledgeRetrievalService {
     /** Chat is a separate disclosure purpose: embedding permission alone never authorizes it. */
     public Result searchOwnedForAssistant(long customerId,long orderId,String query){
         var result=searchOwned(customerId,orderId,query);
+        if(hybrid!=null)return result; // Managed path has already checked exact purpose/configuration grants and revalidated its snapshot.
         return chatAllowed(result);
     }
     private Result chatAllowed(Result result){
@@ -60,7 +67,8 @@ public class KnowledgeRetrievalService {
     /** Definite business-rule topics use published chapter identity, not synthetic vector scores. */
     public Result ruleOwnedForAssistant(long customerId,long orderId,RuleTopicCatalog.Topic topic){
         var order=orders.detail(customerId,orderId);Objects.requireNonNull(topic);
-        var client=new KnowledgeVectorClient(env);client.requireReadableCollection();
+        if(hybrid!=null){var managed=hybrid.rule(order.modelCode(),topic);if(!"RULE_TOPIC_UNAVAILABLE".equals(managed.reason()))return managed;}
+        var client=new KnowledgeVectorClient(env,externalBudget);client.requireReadableCollection();
         String database;
         try(var connection=ds.getConnection()){database=connection.getCatalog();}
         catch(Exception failure){throw new KnowledgeFailure("KNOWLEDGE_DATABASE_ERROR",3);}
@@ -91,19 +99,23 @@ public class KnowledgeRetrievalService {
         if(!Double.isFinite(value)||value < -1||value>1)throw KnowledgeFailure.invalid("KNOWLEDGE_VECTOR_CONFIG_INVALID");return value;
     }
     Result searchModel(String modelCode,String query){
+        if(hybrid!=null){String selected=modelCode,text=query;return hybrid.search(modelCode,query,ids->chatAllowed(searchLegacyModel(selected,text,ids)));}
+        return searchLegacyModel(modelCode,query,null);
+    }
+    private Result searchLegacyModel(String modelCode,String query,Set<Long> allowedDocuments){
         modelCode=text(modelCode,64);query=text(query,1000);
         if(modelCode.codePoints().anyMatch(Character::isISOControl))throw invalid();
         double threshold;
         try{threshold=Double.parseDouble(env.getProperty("KNOWLEDGE_RETRIEVAL_MIN_SCORE","0.5"));}
         catch(NumberFormatException e){throw KnowledgeFailure.invalid("KNOWLEDGE_VECTOR_CONFIG_INVALID");}
         if(!Double.isFinite(threshold)||threshold < -1||threshold>1)throw KnowledgeFailure.invalid("KNOWLEDGE_VECTOR_CONFIG_INVALID");
-        var client=new KnowledgeVectorClient(env);String database;
+        var client=new KnowledgeVectorClient(env,externalBudget);String database;
         try(var connection=ds.getConnection()){database=connection.getCatalog();}
         catch(Exception failure){throw new KnowledgeFailure("KNOWLEDGE_DATABASE_ERROR",3);}
         client.requireReadableCollection();var vector=client.queryEmbedding(query);
         var found=new LinkedHashMap<String,Candidate>();int pages=0;boolean truncated=false;
         for(int offset=0;offset<80;offset+=20){
-            var batch=client.query(vector,modelCode,found.keySet());pages++;
+            var batch=allowedDocuments==null?client.query(vector,modelCode,found.keySet()):client.query(vector,modelCode,found.keySet(),allowedDocuments);pages++;
             for(var candidate:batch)found.putIfAbsent(candidate.id(),candidate);
             if(batch.size()<20)break;
             if(offset==60)truncated=true;

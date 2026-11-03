@@ -35,7 +35,9 @@ public class ConversationTicketCoordinator {
         var draft=drafts.detail(customer,input.draftId());
         if(draft.orderId()!=owned.orderId())throw new ConfirmationService.Conflict();
         // 关键写入独立提交；身份、版本、内容哈希、过期、幂等及原子事件均由原服务校验。
-        var committed=execution.execute(customer,operation,input).response();
+        if(input.conversationId()!=null && !conversation.equals(input.conversationId()))throw new ConfirmationService.Conflict();
+        var boundInput=new TicketOperationService.Input(input.confirmationId(),input.draftId(),input.expectedVersion(),conversation);
+        var committed=execution.execute(customer,operation,boundInput).response();
         var previous=JSON.readValue(message.responseJson(),ConversationResponse.Reply.class);
         var canonical=reply(previous,draft,committed);
         Checkpoint checkpoint;
@@ -61,7 +63,7 @@ public class ConversationTicketCoordinator {
     }
     private static ConversationResponse.Reply reply(ConversationResponse.Reply old, DraftResponse draft, TicketOperationResponse result) {
         return new ConversationResponse.Reply("SERVER_COORDINATOR","TICKET_CREATED",
-            "报修已提交，工单编号："+result.ticket().ticketNo()+"。可在工单列表查看进度。",old.citations(),draft,result);
+            "报修已提交，工单编号："+result.ticket().ticketNo()+"。可在工单列表查看进度。",old.citations(),draft,result,old.points(),old.retrieval(),old.query());
     }
     private static void trace(String conversation,String status) {
         var row=new java.util.LinkedHashMap<String,Object>();row.put("conversationId",conversation);row.put("tool","createServiceTicket");

@@ -19,6 +19,7 @@ public class CreateServiceTicketTool {
         var result=operations.detail(customerId,operationId);
         if(!result.confirmationId().equals(input.confirmationId())||result.draftId()!=input.draftId()||result.draftVersion()!=input.expectedVersion())
             throw new ConfirmationService.Conflict();
+        if(result.ticket()!=null)operations.checkContext(result.ticket().id(),input.conversationId());
         return "SUCCEEDED".equals(result.status())?new TicketOperationService.Result(result,false):null;
     }
 }

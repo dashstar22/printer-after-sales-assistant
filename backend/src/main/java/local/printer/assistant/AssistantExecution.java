@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 /** T029: bounded waiting, attempt budgets and cooperative cancellation; never retries writes. */
 @Component
 public final class AssistantExecution {
+    @org.springframework.beans.factory.annotation.Autowired
+    private local.printer.operations.ExternalCallBudget externalBudget;
     private final Environment env;
     private final ThreadPoolExecutor workers=new ThreadPoolExecutor(4,4,0,TimeUnit.SECONDS,new ArrayBlockingQueue<>(16),r->{
         var t=new Thread(r,"assistant-dependency");t.setDaemon(true);return t;
@@ -46,6 +48,7 @@ public final class AssistantExecution {
         public int readRetries(){return budget.limits.readRetries();}
     }
     public final class Budget {
+        private final String scopeId="turn:"+java.util.UUID.randomUUID();
         private final Limits limits;private final long deadline;
         private final AtomicReference<Stopped> stopped=new AtomicReference<>();
         private int modelCalls,toolCalls;
@@ -79,7 +82,7 @@ public final class AssistantExecution {
         public <T>T call(String kind,Callable<T> work){
             check();long wait=Math.min(TimeUnit.MILLISECONDS.toNanos(limits.requestMs()),deadline-System.nanoTime());
             var scope=new Scope(this,System.nanoTime()+wait,kind);Future<T> future;
-            try {future=workers.submit(()->{ACTIVE.set(scope);try{scope.remaining();return work.call();}finally{ACTIVE.remove();}});}
+            try {future=workers.submit(()->{ACTIVE.set(scope);try(var externalScope=local.printer.operations.ExternalCallBudget.scope(scopeId,"TURN",Math.max(1,java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime())))){scope.remaining();return work.call();}finally{ACTIVE.remove();}});}
             catch(RejectedExecutionException busy){throw stop("ASSISTANT_BUSY");}
             try {var result=future.get(wait,TimeUnit.NANOSECONDS);scope.remaining();return result;}
             catch(java.util.concurrent.TimeoutException timeout){
@@ -92,6 +95,8 @@ public final class AssistantExecution {
                 throw new IllegalStateException("DEPENDENCY_UNAVAILABLE");
             }
         }
+        public <T>T external(String kind,long bytes,Callable<T> call){return externalBudget==null?unchecked(call):externalBudget.invoke(kind,bytes,call);}
+        private <T>T unchecked(Callable<T> call){try{return call.call();}catch(RuntimeException e){throw e;}catch(Exception e){throw new IllegalStateException("MODEL_UNAVAILABLE");}}
     }
     static boolean transientRead(Throwable failure){
         for(var cause=failure;cause!=null;cause=cause.getCause()){

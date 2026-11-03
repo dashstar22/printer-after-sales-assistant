@@ -11,7 +11,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.*;
 
-@RestControllerAdvice(assignableTypes = ConversationController.class)
+@RestControllerAdvice(assignableTypes = {ConversationController.class,AnswerFeedbackController.class})
 public class ConversationErrors {
     @ExceptionHandler(ConversationService.NotFound.class)
     void missing(HttpServletRequest req, HttpServletResponse res) throws IOException {
@@ -21,7 +21,7 @@ public class ConversationErrors {
     void orderMissing(HttpServletRequest req, HttpServletResponse res) throws IOException {
         ApiResponses.error(req,res,404,"ORDER_NOT_FOUND","未找到订单");
     }
-    @ExceptionHandler({ConversationService.InvalidInput.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({ConversationService.InvalidInput.class, HttpMessageNotReadableException.class,org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
     void invalid(HttpServletRequest req, HttpServletResponse res) throws IOException {
         ApiResponses.error(req,res,400,"INVALID_ARGUMENT","请求参数不合法");
     }

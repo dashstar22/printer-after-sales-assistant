@@ -19,7 +19,7 @@ public class TicketQueryService {
     private static Long scope(SessionUser.Identity identity) {
         return switch (identity.role()) {
             case "CUSTOMER" -> identity.id();
-            case "STAFF" -> null;
+            case "STAFF", "ADMIN" -> null;
             default -> throw new AccessDeniedException("没有执行此操作的权限");
         };
     }

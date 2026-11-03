@@ -14,6 +14,18 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @EnableConfigurationProperties(DependencyProperties.class)
 public class PrinterAfterSalesApplication {
     public static void main(String[] args) {
+        if(Arrays.stream(args).anyMatch(a->a.startsWith("--automation-credential-"))) {
+            int code=local.printer.integration.AutomationCredentialCommand.run(PrinterAfterSalesApplication.class,args);
+            if(code!=0)System.exit(code);return;
+        }
+        if(Arrays.stream(args).anyMatch(a->a.startsWith("--identity-maintenance"))) {
+            int code=local.printer.auth.email.IdentityMaintenanceCommand.run(PrinterAfterSalesApplication.class,args);
+            if(code!=0)System.exit(code);return;
+        }
+        if(Arrays.stream(args).anyMatch(a->a.startsWith("--initialize-admin"))) {
+            int code=local.printer.administration.AdministratorCommand.run(PrinterAfterSalesApplication.class,args);
+            if(code!=0)System.exit(code);return;
+        }
         if (KnowledgeCommand.requested(args)) {
             int code = KnowledgeCommand.run(PrinterAfterSalesApplication.class, args);
             if (code != 0) System.exit(code);

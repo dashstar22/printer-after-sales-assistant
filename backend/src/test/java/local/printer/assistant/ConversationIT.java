@@ -265,7 +265,7 @@ class ConversationIT {
         assertEquals(0,count(id));
     }
     @Test void migrationConstraintsRejectOrphansRolesAndDuplicateTurn() throws Exception {
-        assertEquals(List.of("1","2","3","4","5","6","7"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
+        assertEquals(List.of("1","2","3","4","5","6","7","8","9","10"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
         var browser=customerA();String id=create(browser,orderA),turn=UUID.randomUUID().toString();
         assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("INSERT INTO conversations(id,customer_id,order_id) VALUES(?,?,?)",UUID.randomUUID().toString(),a,Long.MAX_VALUE));
         assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("INSERT INTO messages(conversation_id,turn_id,role,content) VALUES(?,?,?,?)",UUID.randomUUID().toString(),turn,"USER","orphan"));

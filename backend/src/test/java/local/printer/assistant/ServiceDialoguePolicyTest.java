@@ -30,6 +30,21 @@ class ServiceDialoguePolicyTest {
         "现场补充信息：已检查纸张；联系人：模拟联系人甲；联系方式：模拟站内联系", "怎样查看工单处理进度？", "我的报修处理到哪一步了？"})
     void knowledgeRoutingDoesNotSwallowCasualMessagesOrAuthorizeWrites(String text){assertFalse(ServiceDialoguePolicy.requiresKnowledge(text));}
 
+    @ParameterizedTest @ValueSource(strings={"设备显示 Z91 该等多久？", "重新开机后错误码又出现了，还能重试吗？", "打印浅淡能自己拆硒鼓吗？",
+        "这台机器的无线网络如何配置？", "如何安装打印驱动？", "耗材多少钱？", "设备冒烟时能打开后盖吗？", "真实型号能用模拟设备的维修方法吗？"})
+    void deviceQuestionsAlwaysRequireEvidenceAndCannotFinishAsCapabilities(String text)throws Exception{
+        assertTrue(ServiceDialoguePolicy.requiresKnowledge(text));assertFalse(ServiceDialoguePolicy.scopeAllowed(text));
+        var state=fixture.bound(List.of(),text,"NONE");
+        assertEquals("REFERENCE_REJECTED",ObservationContinuationTest.finish(state,"{\"kind\":\"WORKFLOW\",\"intent\":\"SERVICE_SCOPE\"}").status());
+    }
+
+    @Test void invalidQueryReportsClarificationRatherThanFalselyClaimingNoSources()throws Exception{
+        var state=fixture.bound(List.of(),"设备如何重启？我的邮箱：private@example.test","NONE");
+        ObservationContinuationTest.set(state,"retrievalStatus","QUERY_REQUIRES_USER_TEXT");
+        var result=ObservationContinuationTest.finish(state,"{\"kind\":\"NO_EVIDENCE\"}");
+        assertEquals("NEEDS_INPUT",result.status());assertTrue(result.text().contains("尚未完成资料检索"));assertTrue(result.citations().isEmpty());
+    }
+
     @Test void repairRuleQuestionCannotFinishAsServiceScopeWithOrWithoutHits()throws Exception{
         var state=fixture.bound(List.of(),"报修要准备什么","NONE");
         String output="{\"kind\":\"WORKFLOW\",\"intent\":\"SERVICE_SCOPE\"}";

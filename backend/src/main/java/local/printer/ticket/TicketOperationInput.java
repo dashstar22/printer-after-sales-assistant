@@ -8,11 +8,17 @@ import tools.jackson.databind.JsonNode;
 public final class TicketOperationInput {
     private TicketOperationInput() {}
     public static TicketOperationService.Input parse(JsonNode body) {
-        if (body == null || !body.isObject() || !body.propertyNames().equals(Set.of("confirmationId", "draftId", "expectedVersion")))
+        if (body == null || !body.isObject() || !(body.propertyNames().equals(Set.of("confirmationId", "draftId", "expectedVersion"))
+            || body.propertyNames().equals(Set.of("confirmationId", "draftId", "expectedVersion", "conversationId"))))
             throw new DraftService.InvalidInput();
         var confirmation = body.get("confirmationId");
         if (!confirmation.isString()) throw new DraftService.InvalidInput();
-        return new TicketOperationService.Input(uuid(confirmation.asString()), number(body.get("draftId"), 1), number(body.get("expectedVersion"), 0));
+        String conversation = null;
+        if (body.has("conversationId")) {
+            if (!body.get("conversationId").isString()) throw new DraftService.InvalidInput();
+            conversation = uuid(body.get("conversationId").asString());
+        }
+        return new TicketOperationService.Input(uuid(confirmation.asString()), number(body.get("draftId"), 1), number(body.get("expectedVersion"), 0), conversation);
     }
     private static long number(JsonNode value, long min) {
         if (!value.isIntegralNumber() || !value.canConvertToLong() || value.asLong() < min) throw new DraftService.InvalidInput();

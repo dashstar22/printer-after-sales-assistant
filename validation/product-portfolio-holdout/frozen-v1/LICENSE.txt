@@ -1,0 +1,9 @@
+CC0 1.0 Universal
+
+To the extent possible under law, the authors waive copyright and related
+rights in PRINT-HOLDOUT-02.md and questions.json, which are original synthetic
+AI-authored and AI-reviewed portfolio evaluation material.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+This dedication does not cover other repository files, vendor manuals,
+third-party dependencies, real equipment, or actual business data.

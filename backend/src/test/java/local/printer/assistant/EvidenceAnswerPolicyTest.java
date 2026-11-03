@@ -17,6 +17,7 @@ class EvidenceAnswerPolicyTest {
         assertEquals("ANSWERED",answer.status());assertEquals(List.of(actual),answer.citations());
         assertTrue(answer.text().contains(actual.content()));assertTrue(answer.text().contains("TEST-A"));
         assertTrue(answer.text().contains("v2"));assertFalse(answer.text().contains(unused.content()));
+        assertTrue(answer.text().contains(actual.useCondition()));
         assertEquals(3,answer.citations().get(0).pageNumber());assertEquals("注意事项",answer.citations().get(0).section());
     }
     @ParameterizedTest @ValueSource(strings={

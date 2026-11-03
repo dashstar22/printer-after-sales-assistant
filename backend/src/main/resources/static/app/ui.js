@@ -10,6 +10,12 @@ export function button(text, action, className = 'secondary-button') {
   node.addEventListener('click', action); return node;
 }
 export function link(text, href, className = '') { const a = el('a', text, className); a.href = href; return a; }
+export function userLabel(user) {
+  if(typeof user?.displayName==='string'&&user.displayName.trim())return user.displayName.trim();
+  for(const key of ['displayEmail','email'])if(typeof user?.[key]==='string'&&user[key].trim())return user[key].trim();
+  if(typeof user?.username==='string'&&!/^email_[a-f0-9]{32}$/i.test(user.username))return user.username;
+  return {CUSTOMER:'客户',STAFF:'客服',ADMIN:'管理员'}[user?.role]||'用户';
+}
 export function field(label, control) {
   const wrapper = el('div', null, 'field'); const name = el('label', label);
   name.htmlFor = control.id; wrapper.append(name, control); return wrapper;

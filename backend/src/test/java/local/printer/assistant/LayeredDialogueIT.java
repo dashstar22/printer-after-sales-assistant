@@ -79,7 +79,7 @@ class LayeredDialogueIT {
     void response(String text){replies.add(Map.of("role","assistant","content",text));}
     void call(String name,Object args){replies.add(Map.of("role","assistant","tool_calls",List.of(Map.of("id","fixture-"+UUID.randomUUID(),"type","function","function",Map.of("name",name,"arguments",JSON.writeValueAsString(args))))));}
     @Test void migrationsAreAdditiveAndNewConversationsHaveNoState()throws Exception{
-        assertEquals(List.of("1","2","3","4","5","6","7"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
+        assertEquals(List.of("1","2","3","4","5","6","7","8","9","10"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
         var browser=browser();String id=create(browser,order);assertNull(state(id));assertEquals(0,requests.size());
     }
     @Test void pureGreetingHasZeroChatWhileUnknownUsesExistingToolLoop()throws Exception{

@@ -1,0 +1,2 @@
+async function refresh(){const output=document.querySelector('#state');try{const r=await fetch('/api/admin/operations',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw new Error(r.status===403?'需要已验证邮箱的管理员身份':'无法读取运行状态，请登录或稍后重试');output.textContent=JSON.stringify(await r.json(),null,2);}catch(e){output.textContent=e.message;}}
+document.querySelector('#refresh').addEventListener('click',refresh);refresh();

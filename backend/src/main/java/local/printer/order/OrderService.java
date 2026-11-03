@@ -25,4 +25,9 @@ public class OrderService {
         if (order == null) throw new NotFound();
         return order;
     }
+    @Transactional
+    public OrderResponse lockActive(long customerId,long id) {
+        var order=mapper.lockActiveOwned(id,customerId);
+        if(order==null)throw new NotFound();return order;
+    }
 }

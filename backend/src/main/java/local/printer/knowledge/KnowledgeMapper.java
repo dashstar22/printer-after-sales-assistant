@@ -37,7 +37,8 @@ public interface KnowledgeMapper {
     @Select("SELECT " + COLUMNS + " FROM knowledge_documents WHERE id=#{id} FOR UPDATE")
     Document lockDocument(long id);
 
-    @Select("SELECT COUNT(*) FROM knowledge_chunks WHERE document_id=#{id}")
+    String READ_REVISION="COALESCE((SELECT g.revision FROM knowledge_active_generations a JOIN knowledge_index_generations g ON g.generation_id=a.generation_id WHERE g.document_id=#{id}),1)";
+    @Select("SELECT COUNT(*) FROM knowledge_chunks WHERE document_id=#{id} AND revision="+READ_REVISION)
     int chunkCount(long id);
 
     @Insert("INSERT INTO knowledge_chunks(document_id,chunk_index,content,page_number,section) "
@@ -46,6 +47,6 @@ public interface KnowledgeMapper {
     int insertChunk(NewRow<Chunk> row);
 
     @Select("SELECT id,document_id AS documentId,chunk_index AS chunkIndex,content,page_number AS pageNumber,section "
-        + "FROM knowledge_chunks WHERE document_id=#{id} ORDER BY chunk_index")
+        + "FROM knowledge_chunks WHERE document_id=#{id} AND revision="+READ_REVISION+" ORDER BY chunk_index")
     List<Chunk> chunks(long id);
 }

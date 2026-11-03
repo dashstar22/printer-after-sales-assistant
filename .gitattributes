@@ -2,8 +2,15 @@
 *.java text eol=lf
 *.js text eol=lf
 *.json text eol=lf
+*.yaml text eol=lf
 *.yml text eol=lf
 *.md text eol=lf
+*.py text eol=lf
 *.ps1 text eol=crlf
 *.cmd text eol=crlf
 *.woff2 binary
+# Migration checksums and bundled asset manifests bind exact original bytes.
+*.sql -text
+backend/src/main/resources/static/app/assets/** -text
+backend/src/main/resources/static/app/licenses/** -text
+backend/src/main/resources/static/app/vendor/*.js -text

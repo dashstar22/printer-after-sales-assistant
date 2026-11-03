@@ -23,13 +23,15 @@ public class TicketHandlingService {
 
     @Transactional
     public TicketHandlingResponse handle(SessionUser.Identity actor, long id, long expectedVersion, Action action, String note) {
-        if (!"STAFF".equals(actor.role())) throw new AccessDeniedException("没有执行此操作的权限");
+        if (!java.util.Set.of("STAFF","ADMIN").contains(actor.role())) throw new AccessDeniedException("没有执行此操作的权限");
         if (id < 1 || expectedVersion < 0 || action == null) throw new DraftService.InvalidInput();
         String text = action == Action.ACCEPT ? "客服接单" : DraftService.text(note, 2000);
         var row = handling.lock(id);
         if (row == null) throw new TicketQueryService.NotFound();
         String expectedStatus = action == Action.ACCEPT ? "PENDING" : "IN_PROGRESS";
         if (!expectedStatus.equals(row.status()) || expectedVersion != row.version() || row.version() == Long.MAX_VALUE) throw new Conflict();
+        if (action != Action.ACCEPT && !"ADMIN".equals(actor.role()) && !java.util.Objects.equals(row.acceptedBy(), actor.id()))
+            throw new AccessDeniedException("仅负责人或管理员可处理工单");
         String nextStatus = action == Action.CLOSE ? "CLOSED" : "IN_PROGRESS";
         Long acceptedBy = action == Action.ACCEPT ? actor.id() : row.acceptedBy();
         if (handling.advance(id, expectedStatus, expectedVersion, nextStatus, acceptedBy) != 1) throw new Conflict();

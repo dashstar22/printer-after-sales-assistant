@@ -1,4 +1,28 @@
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 300ms
+      timeout: 300ms
+      repositories:
+        enabled: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:}
+    password: ${RABBITMQ_PASSWORD:}
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+      file-size-threshold: 0
   application:
     name: printer-after-sales
   config:
@@ -27,6 +51,11 @@ server:
         same-site: lax
         secure: ${SESSION_COOKIE_SECURE:false}
 management:
+  health:
+    redis:
+      enabled: ${REDIS_HEALTH_ENABLED:false}
+    rabbit:
+      enabled: ${KNOWLEDGE_JOBS_ENABLED:false}
   endpoints:
     web:
       exposure:
@@ -35,7 +64,31 @@ management:
     health:
       show-details: never
 app:
+  redis:
+    enabled: ${REDIS_ENABLED:false}
+  automation:
+    enabled: ${AUTOMATION_ENABLED:false}
+    allowed-hosts: ${AUTOMATION_ALLOWED_HOSTS:}
+    allowed-origins: ${AUTOMATION_ALLOWED_ORIGINS:}
+    enabled-targets: ${AUTOMATION_ENABLED_TARGETS:}
+    site-url: ${AUTOMATION_SITE_URL:http://localhost:8080}
+    pending-hours: ${AUTOMATION_PENDING_HOURS:2}
+    inactive-hours: ${AUTOMATION_INACTIVE_HOURS:24}
   knowledge:
+    hybrid:
+      enabled: ${KNOWLEDGE_HYBRID_ENABLED:false}
+    lucene-root: ${KNOWLEDGE_LUCENE_ROOT:.local-validation/knowledge-lucene}
+    jobs:
+      enabled: ${KNOWLEDGE_JOBS_ENABLED:false}
+      exchange: ${KNOWLEDGE_JOBS_EXCHANGE:knowledge.jobs}
+      queue: ${KNOWLEDGE_JOBS_QUEUE:knowledge.jobs.work}
+      routing-key: ${KNOWLEDGE_JOBS_ROUTING_KEY:knowledge.publish}
+      dead-exchange: ${KNOWLEDGE_JOBS_DEAD_EXCHANGE:knowledge.jobs.dead}
+      dead-queue: ${KNOWLEDGE_JOBS_DEAD_QUEUE:knowledge.jobs.dead}
+      lease-seconds: ${KNOWLEDGE_JOBS_LEASE_SECONDS:120}
+      dispatch-delay-ms: ${KNOWLEDGE_JOBS_DISPATCH_DELAY_MS:1000}
+    storage-root: ${KNOWLEDGE_STORAGE_ROOT:.local-validation/knowledge-private}
+    processing-configurations: ${KNOWLEDGE_PROCESSING_CONFIGURATIONS:}
     maintenance-enabled: ${KNOWLEDGE_MAINTENANCE_ENABLED:false}
     maintenance-root: ${KNOWLEDGE_MAINTENANCE_ROOT:.}
   dependencies:
@@ -46,3 +99,5 @@ app:
       base-url: ${AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
       chat-model: ${AI_CHAT_MODEL:}
       api-key: ${AI_API_KEY:}
+
+# Redis is optional; local bounded rate protection remains active.

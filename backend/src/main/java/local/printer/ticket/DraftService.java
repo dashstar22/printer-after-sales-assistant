@@ -24,7 +24,7 @@ public class DraftService {
     @Transactional
     public DraftResponse create(long customerId, Input input) {
         var row = normalized(customerId, input, 0);
-        var order = ownedOrder(customerId, row.orderId());
+        var order = activeOrder(customerId, row.orderId());
         var value = new NewRow<>(row);
         if (mapper.insertDraft(value) != 1) throw new Conflict();
         return response(mapper.ownedDraft(value.getId(), customerId), order);
@@ -46,7 +46,7 @@ public class DraftService {
         if (input.expectedVersion() == null || input.expectedVersion() < 0) throw new InvalidInput();
         if (input.expectedVersion() != current.version() || current.version() == Long.MAX_VALUE) throw new Conflict();
         var next = normalized(customerId, input, current.version());
-        var order = ownedOrder(customerId, next.orderId());
+        var order = activeOrder(customerId, next.orderId());
         if (mapper.updateOwnedDraft(id, next) != 1) throw new Conflict();
         return response(mapper.ownedDraft(id, customerId), order);
     }
@@ -55,6 +55,10 @@ public class DraftService {
         var order = orders.findOwned(id, customerId);
         if (order == null) throw new OrderService.NotFound();
         return order;
+    }
+    private OrderResponse activeOrder(long customerId,long id) {
+        var order=orders.lockActiveOwned(id,customerId);
+        if(order==null)throw new OrderService.NotFound();return order;
     }
     private static Draft normalized(long customerId, Input input, long version) {
         if (input.orderId() <= 0) throw new InvalidInput();

@@ -13,14 +13,19 @@ export function createState() {
 }
 
 export function entryFor(user) {
-  return user?.role === 'CUSTOMER' ? 'customer' : user?.role === 'STAFF' ? 'staff' : null;
+  if(!user)return null;
+  if(user.passwordChangeRequired)return 'change-password';
+  if(user.emailVerified!==true)return 'bind-email';
+  return user.role === 'CUSTOMER' ? 'customer' : user.role === 'STAFF' ? 'staff' : user.role === 'ADMIN' ? 'admin' : null;
 }
 
 export function routeFor(hash, user) {
   const own = entryFor(user);
   if (!own) return null;
+  if(['bind-email','change-password'].includes(own))return own;
   const requested = hash.replace(/^#\/?/, '').split(/[?&]/, 1)[0];
   if (!requested || requested === 'login') return own;
   return requested === own || (own === 'customer' && /^customer\/(assistant|repair|devices|tickets|ticket)(\/(\d+|new))?$/.test(requested)) ||
-    (own === 'staff' && /^staff\/(tickets|ticket)(\/\d+)?$/.test(requested)) ? own : 'denied';
+    (own === 'staff' && /^staff\/(tickets|ticket)(\/\d+)?$/.test(requested)) ||
+    (own === 'admin' && /^admin\/(accounts|models|orders|imports|invitations|tickets|ticket|knowledge)(\/\d+)?$/.test(requested)) ? own : 'denied';
 }

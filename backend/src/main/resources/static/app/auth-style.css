@@ -1,0 +1,13 @@
+/* Existing paper/violet palette and type; identity forms remain a single readable column. */
+.login-options>a{color:#765498;font-size:14px}.auth-help{margin-top:18px;color:var(--muted);font-size:14px;line-height:1.8}.auth-help summary{cursor:pointer;min-height:32px;width:fit-content}.auth-help p{margin:10px 0}.auth-help>a{display:inline-flex;align-items:center;min-height:36px;color:#765498}
+.header-actions .identity{max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.email-view .card-copy{line-height:1.85;margin-bottom:22px}.email-view .fields{display:grid;gap:18px}.email-view form>.primary-button{margin-top:20px;width:100%;min-height:48px}.email-view .section-note{display:block;line-height:1.8;margin-top:18px;overflow-wrap:anywhere}.auth-links{display:flex;gap:15px;flex-wrap:wrap;font-size:14px;line-height:1.8}.auth-links a,.email-view>.auth-switch{color:#765498}.email-view>.auth-switch{display:block;margin-top:18px}.email-view .feedback{line-height:1.85;overflow-wrap:anywhere}.invitations-panel>form{max-width:600px;display:grid;gap:12px}.invitation-list{margin-top:20px}.invitation-row{padding:20px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}.invitation-row h3{margin:0 0 8px}.invitation-row>button{margin-right:12px;margin-top:10px}.invitation-row .section-note{font-size:14px}.nav a{white-space:nowrap}.workspace-open .nav{overflow-y:auto}.entry-card:has(.email-view){max-height:78svh;overflow-y:auto}.email-view .primary-button{white-space:normal}.email-view input{max-width:100%;box-sizing:border-box}.header-actions .identity{overflow-wrap:anywhere}
+@media(max-width:760px){.entry-card:has(.email-view){max-height:none;overflow:visible}.workspace-open .nav{overflow-y:hidden}.email-view h2{line-height:1.4}.invitation-row>button{min-height:44px}.auth-links{gap:12px}.email-view .card-copy{font-size:14px}.workspace-open .nav a{flex:0 0 auto;min-width:70px}.invitations-panel>form{max-width:100%}}
+/* Email actions can grow after an error or acceptance. Keep the entire card in document flow. */
+@media(min-width:761px){
+  #main:has(.email-view){display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);align-items:start;gap:clamp(24px,5vw,80px);padding:80px 8% 0;}
+  #main:has(.email-view) .hero-copy{margin:0;min-width:0;max-width:560px;}
+  #main:has(.email-view) .entry-region{position:static;inset:auto;width:100%;max-width:440px;margin:0;justify-self:end;}
+  #main:has(.email-view) .entry-card{max-height:none;overflow:visible;}
+  .scene:not(.workspace-open):has(.email-view) .footer{margin-top:56px;}
+}

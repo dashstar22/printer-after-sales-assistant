@@ -45,7 +45,7 @@ class KnowledgePersistenceIT {
         if(constraint!=null)assertTrue(actual.getMessage().contains(constraint));
     }
     @Test void migrationContractAndNoAutomaticProductionChunks() {
-        assertEquals(List.of("1","2","3","4","5","6","7"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
+        assertEquals(local.printer.MigrationAssertions.versions(),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM knowledge_chunks",Integer.class));
     }
     @Test void officialMetadataRoundTripAndInitialState() {

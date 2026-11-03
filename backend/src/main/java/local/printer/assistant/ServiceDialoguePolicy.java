@@ -29,13 +29,23 @@ final class ServiceDialoguePolicy {
 
     /** A retrieval requirement only. This classifier can never authorize a write. */
     static boolean requiresKnowledge(String text) {
-        if (text == null || AssistantConversationService.creation(text) || AssistantConversationService.edit(text) != null)
+        if (text == null || DeviceObservationPolicy.needsObservedCount(text) || AssistantConversationService.creation(text) || AssistantConversationService.edit(text) != null)
             return false;
         // Field-value continuations and ticket navigation keep their existing workflow contracts.
         if (text.matches("(?s)^(?:故障描述|故障|现场补充信息|现场|联系人|联系方式)[：:].*")) return false;
         if (text.matches("(?s).*(?:工单|报修).*(?:进度|处理到哪|关闭结果|查看记录).*")) return false;
-        return text.matches("(?s).*(?:报修|草稿|故障描述|现场补充|现场信息|联系人|联系方式|联系方法).*")
-            && text.matches("(?s).*(?:什么|哪些|哪几|怎么|怎样|如何|能否|是否|可不可以|可否|必须|一定要|上限|最多|长度|字数|限制|要求|格式|需要|准备).*" );
+        boolean question=text.matches("(?s).*(?:[？?]|什么|哪些|哪几|怎么|怎样|如何|能否|是否|可不可以|可否|必须|一定要|上限|最多|长度|字数|限制|要求|格式|需要|准备|多久|多少|吗[。！!]?|呢[。！!]?).*");
+        return question && (text.matches("(?s).*(?:报修|草稿|故障描述|现场补充|现场信息|联系人|联系方式|联系方法).*") || deviceSubject(text));
+    }
+
+    /** Device questions need evidence just like service rules. No model/benchmark names are listed. */
+    private static boolean deviceSubject(String text) {
+        return text.matches("(?is).*(?:打印|设备|机器|型号|错误码|故障|卡纸|纸盒|纸张|硒鼓|墨盒|墨粉|耗材|浅淡|配网|无线|wi[ -]?fi|固件|驱动|升级包|刷机|主板|零件|部件|保修|维修|售后|开机|关机|后盖|冷却|异味|冒烟|[a-z]{1,5}[-_]?[0-9]{2,}).*");
+    }
+
+    static boolean scopeAllowed(String text) {
+        return text!=null && !requiresKnowledge(text) && !deviceSubject(text)
+            && !text.matches("(?s).*(?:报修|草稿|联系人|联系方式|工单|订单|提交|确认).*");
     }
 
     static EvidenceAnswerPolicy.Answer noEvidence(String currentText) {

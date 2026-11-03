@@ -16,6 +16,10 @@ final class DialogueRouter {
     static Decision route(String id,long customer,long order,String turn,String input,DialogueState previous,String target,LocalDateTime now){
         String text=businessText(input);DialogueState state=previous;
         if(state!=null&&Set.of("COLLECTING","PAUSED").contains(state.phase())&&!now.isBefore(state.expiresAt()))state=state.next("EXPIRED",state.values(),turn);
+        if(DeviceObservationPolicy.needsObservedCount(text)){
+            if(state!=null&&state.active(now)&&"COLLECTING".equals(state.phase()))state=state.next("PAUSED",state.values(),turn);
+            return new Decision("RULE","DEVICE_OBSERVATION","DEVICE_READING_UNAVAILABLE",state,DeviceObservationPolicy.missingCount(),false,null);
+        }
         var local=ServiceDialoguePolicy.localReply(input.strip());
         if(local!=null){
             String intent=text.matches(".*(?:天气|下雨).*")?"OUT_OF_DOMAIN":text.matches(".*(?:功能|做什么|怎么使用|你是谁).*")?"CAPABILITIES":"GREETING";

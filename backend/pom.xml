@@ -3,8 +3,17 @@
   <parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>4.1.2</version><relativePath/></parent>
   <groupId>local.printer</groupId><artifactId>printer-after-sales</artifactId><version>0.0.1-SNAPSHOT</version>
   <name>打印机售后服务</name>
-  <properties><java.version>17</java.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding></properties>
+  <properties><java.version>17</java.version><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><printer.build.directory>${project.basedir}/target</printer.build.directory><rabbit-amqp-client.version>5.37.0</rabbit-amqp-client.version></properties>
   <dependencies>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-redis</artifactId></dependency>
+    <dependency><groupId>org.apache.lucene</groupId><artifactId>lucene-core</artifactId><version>9.12.3</version></dependency>
+    <dependency><groupId>org.apache.lucene</groupId><artifactId>lucene-analysis-smartcn</artifactId><version>9.12.3</version></dependency>
+    <dependency><groupId>io.modelcontextprotocol.sdk</groupId><artifactId>mcp-core</artifactId><version>2.1.0</version></dependency>
+    <dependency><groupId>io.modelcontextprotocol.sdk</groupId><artifactId>mcp-json-jackson3</artifactId><version>2.1.0</version></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-mail</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-amqp</artifactId></dependency>
+    <dependency><groupId>org.apache.poi</groupId><artifactId>poi-ooxml</artifactId><version>6.0.0</version></dependency>
+    <dependency><groupId>org.apache.commons</groupId><artifactId>commons-csv</artifactId><version>1.14.1</version></dependency>
     <dependency><groupId>dev.langchain4j</groupId><artifactId>langchain4j</artifactId><version>1.22.0</version></dependency>
     <dependency><groupId>dev.langchain4j</groupId><artifactId>langchain4j-open-ai</artifactId><version>1.22.0</version></dependency>
     <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
@@ -18,7 +27,7 @@
     <dependency><groupId>org.mybatis.spring.boot</groupId><artifactId>mybatis-spring-boot-starter</artifactId><version>4.1.0</version></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
   </dependencies>
-  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
+  <build><directory>${printer.build.directory}</directory><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
   <profiles>
     <profile><id>assistant-regression-v4-it</id><build><plugins><plugin>
       <groupId>org.apache.maven.plugins</groupId><artifactId>maven-failsafe-plugin</artifactId>

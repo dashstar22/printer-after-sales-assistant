@@ -17,7 +17,7 @@ public class ServiceStatusController {
     public ServiceStatusController(DependencyProperties dependencies, Environment environment) {
         this.dependencies = dependencies; this.environment = environment;
     }
-    public record Status(String assistantMode) {}
+    public record Status(String assistantMode, String deploymentMode) {}
     @GetMapping("/api/service-status")
     ResponseEntity<Status> status() {
         String mode = switch (AssistantTraceFilter.modelMode(dependencies.ai(), environment.getProperty("ASSISTANT_MODEL_MODE", "AUTO"))) {
@@ -25,6 +25,11 @@ public class ServiceStatusController {
             case "PROTOCOL_SIMULATION" -> "SIMULATED_API";
             default -> "MODEL_API";
         };
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Status(mode));
+        String deployment = switch (environment.getProperty("PORTFOLIO_MODE", "")) {
+            case "real" -> "PORTFOLIO_REAL";
+            case "offline" -> "PORTFOLIO_OFFLINE";
+            default -> "STANDARD";
+        };
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Status(mode, deployment));
     }
 }

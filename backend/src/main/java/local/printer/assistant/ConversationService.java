@@ -22,7 +22,7 @@ public class ConversationService {
     @Transactional
     public ConversationResponse.Detail create(long customerId, long orderId) {
         if (orderId < 1) throw new InvalidInput();
-        orders.detail(customerId, orderId);
+        orders.lockActive(customerId, orderId);
         String id = UUID.randomUUID().toString();
         if (mapper.insertConversation(id, customerId, orderId) != 1) throw new Conflict();
         return detail(customerId, id, 1, 20);

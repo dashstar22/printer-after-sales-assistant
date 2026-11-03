@@ -14,22 +14,9 @@ import local.printer.knowledge.KnowledgeRows.NewRow;
 @ConditionalOnNotWebApplication
 @ConditionalOnProperty(name="app.knowledge.maintenance-enabled",havingValue="true")
 public class KnowledgeRegistrationService {
-    private final KnowledgeMapper mapper;
-    private final TransactionTemplate tx;
-    public KnowledgeRegistrationService(KnowledgeMapper mapper, PlatformTransactionManager manager) {
-        this.mapper=mapper;this.tx=new TransactionTemplate(manager);
-    }
+    private final KnowledgeApplicationService application;
+    public KnowledgeRegistrationService(KnowledgeApplicationService application) { this.application=application; }
     public int register(Path root,String manifest,List<String> ids) {
-        var documents=KnowledgeManifest.read(root,manifest,ids);
-        try {
-            tx.executeWithoutResult(status->{
-                for(var document:documents) {
-                    if(mapper.insertDocument(new NewRow<>(document))!=1) throw new KnowledgeFailure("KNOWLEDGE_DATABASE_ERROR",3);
-                }
-            });
-            return documents.size();
-        } catch(DuplicateKeyException failure) { throw new KnowledgeFailure("KNOWLEDGE_DUPLICATE",4);
-        } catch(KnowledgeFailure failure) {throw failure;
-        } catch(RuntimeException failure) {throw new KnowledgeFailure("KNOWLEDGE_DATABASE_ERROR",3);}
+        return application.register(KnowledgeManifest.read(root,manifest,ids)).size();
     }
 }

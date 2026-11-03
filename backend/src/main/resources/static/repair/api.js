@@ -2,7 +2,7 @@ export class ApiError extends Error {
   constructor(status, code, message, traceId) { super(message); Object.assign(this, {status, code, traceId}); }
 }
 // 每次写入获取当前会话token；绝不自动重发业务写请求。
-export async function request(path, {method = 'GET', body, form, timeoutMs = 15000} = {}) {
+export async function request(path, {method = 'GET', body, form, multipart, timeoutMs = 15000} = {}) {
   const headers = {Accept: 'application/json'};
   if (method !== 'GET') {
     const csrf = await request('/api/auth/csrf');
@@ -14,7 +14,7 @@ export async function request(path, {method = 'GET', body, form, timeoutMs = 150
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(path, {method, headers, credentials: 'same-origin', cache: 'no-store',
-      signal: controller.signal, body: form ? new URLSearchParams(form) : body === undefined ? undefined : JSON.stringify(body)});
+      signal: controller.signal, body: multipart ?? (form ? new URLSearchParams(form) : body === undefined ? undefined : JSON.stringify(body))});
     const value = await response.json();
     if (!response.ok) throw new ApiError(response.status, value.code, value.message, value.traceId);
     return value;

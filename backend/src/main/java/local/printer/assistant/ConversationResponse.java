@@ -12,7 +12,18 @@ public final class ConversationResponse {
     private ConversationResponse() {}
     public record Reply(String mode, String status, String text,
                         List<KnowledgeRetrievalService.Source> citations, DraftResponse draft,
-                        TicketOperationResponse operation) {}
+                        TicketOperationResponse operation, List<Point> points,
+                        java.util.Map<String,Object> retrieval, Query query) {
+        public Reply {
+            points=points==null?List.of():List.copyOf(points);
+            retrieval=retrieval==null?java.util.Map.of():java.util.Map.copyOf(retrieval);
+        }
+        public Reply(String mode,String status,String text,List<KnowledgeRetrievalService.Source> citations,DraftResponse draft,TicketOperationResponse operation){
+            this(mode,status,text,citations,draft,operation,List.of(),java.util.Map.of(),null);
+        }
+    }
+    public record Point(String text,List<Integer> citations) {}
+    public record Query(String query,String reason,int rewriteCalls) {}
     public record Message(long id, String turnId, String role, String content, Reply response, Instant createdAt) {
         @Override public String toString() { return "Message[REDACTED]"; }
     }

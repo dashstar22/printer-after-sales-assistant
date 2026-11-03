@@ -1,0 +1,150 @@
+# Always pass -p <unique project>; never reuse the Windows daily Compose project.
+services:
+  app:
+    image: ${APP_IMAGE:?Build and select an immutable candidate image}
+    environment:
+      SPRING_CONFIG_IMPORT: ""
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SESSION_COOKIE_SECURE: "true"
+      DB_URL: jdbc:mysql://mysql:3306/printer?sslMode=DISABLED&allowPublicKeyRetrieval=true&connectionTimeZone=UTC&characterEncoding=UTF-8
+      MYSQL_USER: printer
+      REDIS_HOST: redis
+      REDIS_ENABLED: "true"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: printer
+      KNOWLEDGE_JOBS_ENABLED: "true"
+      KNOWLEDGE_HYBRID_ENABLED: "true"
+      KNOWLEDGE_INTERNAL_HOSTS: qdrant
+      KNOWLEDGE_HYBRID_COLLECTION: printer_hybrid
+      QDRANT_URL: http://qdrant:6333
+      KNOWLEDGE_STORAGE_ROOT: /data/knowledge
+      KNOWLEDGE_LUCENE_ROOT: /data/lucene
+      APP_TICKETS_PHOTO_ROOT: /data/photos
+      AI_ENABLED: ${AI_ENABLED:-false}
+      KNOWLEDGE_EXTERNAL_CALLS_ENABLED: ${KNOWLEDGE_EXTERNAL_CALLS_ENABLED:-false}
+      AI_BASE_URL: ${AI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-}
+      KNOWLEDGE_EMBEDDING_BASE_URL: ${KNOWLEDGE_EMBEDDING_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      KNOWLEDGE_RERANK_URL: ${KNOWLEDGE_RERANK_URL:-https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank}
+      KNOWLEDGE_PROCESSING_CONFIGURATIONS: ${KNOWLEDGE_PROCESSING_CONFIGURATIONS:-}
+      EXTERNAL_DAILY_CALLS: ${EXTERNAL_DAILY_CALLS:-0}
+      EXTERNAL_DAILY_INPUT_BYTES: ${EXTERNAL_DAILY_INPUT_BYTES:-0}
+      EXTERNAL_CHAT_DAILY_CALLS: ${EXTERNAL_CHAT_DAILY_CALLS:-300}
+      EXTERNAL_CHAT_DAILY_INPUT_BYTES: ${EXTERNAL_CHAT_DAILY_INPUT_BYTES:-1000000}
+      EXTERNAL_REWRITE_DAILY_CALLS: ${EXTERNAL_REWRITE_DAILY_CALLS:-300}
+      EXTERNAL_REWRITE_DAILY_INPUT_BYTES: ${EXTERNAL_REWRITE_DAILY_INPUT_BYTES:-1000000}
+      EXTERNAL_EMBEDDING_DAILY_CALLS: ${EXTERNAL_EMBEDDING_DAILY_CALLS:-300}
+      EXTERNAL_EMBEDDING_DAILY_INPUT_BYTES: ${EXTERNAL_EMBEDDING_DAILY_INPUT_BYTES:-1000000}
+      EXTERNAL_RERANK_DAILY_CALLS: ${EXTERNAL_RERANK_DAILY_CALLS:-300}
+      EXTERNAL_RERANK_DAILY_INPUT_BYTES: ${EXTERNAL_RERANK_DAILY_INPUT_BYTES:-1000000}
+      EXTERNAL_TURN_CALLS: ${EXTERNAL_TURN_CALLS:-12}
+      EXTERNAL_TURN_INPUT_BYTES: ${EXTERNAL_TURN_INPUT_BYTES:-200000}
+      EXTERNAL_TASK_CALLS: ${EXTERNAL_TASK_CALLS:-100}
+      EXTERNAL_TASK_INPUT_BYTES: ${EXTERNAL_TASK_INPUT_BYTES:-1000000}
+      EXTERNAL_MAX_CONCURRENT: ${EXTERNAL_MAX_CONCURRENT:-4}
+      EXTERNAL_TASK_TIMEOUT_MS: ${EXTERNAL_TASK_TIMEOUT_MS:-120000}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USERNAME: ${EMAIL_SMTP_USERNAME:-}
+      EMAIL_SMTP_STARTTLS: ${EMAIL_SMTP_STARTTLS:-true}
+      EMAIL_SMTP_SSL: ${EMAIL_SMTP_SSL:-false}
+      EMAIL_SITE_ORIGIN: ${EMAIL_SITE_ORIGIN:-https://${SITE_HOST:?Set a fixed site hostname}:${HTTPS_PORT:-8443}}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_DAILY_CAP: ${EMAIL_DAILY_CAP:-20}
+      LEGACY_LOGIN_MODE: ${LEGACY_LOGIN_MODE:-MIGRATION_ONLY}
+      AUTOMATION_ENABLED: "false"
+      AUTOMATION_ENABLED_TARGETS: ""
+    secrets: [mysql_password, redis_password, rabbit_password, smtp_password, ai_api_key]
+    volumes: [private:/data]
+    networks: [private, edge]
+    mem_limit: 1g
+    cpus: 2
+    restart: unless-stopped
+    depends_on:
+      mysql: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, "curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  mysql:
+    image: mysql@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
+    environment:
+      MYSQL_DATABASE: printer
+      MYSQL_USER: printer
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    secrets: [mysql_password, mysql_root_password]
+    volumes: [mysql:/var/lib/mysql]
+    networks: [private]
+    mem_limit: 1g
+    healthcheck:
+      test: [CMD-SHELL, "MYSQL_PWD=$$(cat /run/secrets/mysql_password) mysql -u printer -D printer -e 'SELECT 1' >/dev/null"]
+      interval: 5s
+      retries: 40
+      timeout: 5s
+  redis:
+    image: redis@sha256:298641b35ac51aa999f9bb85707d6681fe635ce59cda51886a0b6adc1da37b8e
+    entrypoint: [/bin/sh, -ec]
+    command: ["exec redis-server --requirepass \"$$(cat /run/secrets/redis_password)\" --maxmemory 128mb --maxmemory-policy allkeys-lru"]
+    secrets: [redis_password]
+    networks: [private]
+    mem_limit: 192m
+  rabbitmq:
+    image: rabbitmq@sha256:21577d148f4f7563a87d761862fa353f59348a094833ca8b1b1a46a8102dffce
+    entrypoint: [/bin/sh, -ec]
+    command: ["export RABBITMQ_DEFAULT_USER=printer RABBITMQ_DEFAULT_PASS=$$(cat /run/secrets/rabbit_password); exec docker-entrypoint.sh rabbitmq-server"]
+    secrets: [rabbit_password]
+    volumes: [rabbit:/var/lib/rabbitmq]
+    networks: [private]
+    mem_limit: 512m
+  qdrant:
+    image: qdrant/qdrant@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2
+    environment: {QDRANT__TELEMETRY_DISABLED: "true"}
+    volumes: [qdrant:/qdrant/storage]
+    networks: [private]
+    mem_limit: 512m
+  proxy:
+    image: caddy@sha256:36c24ad91a7ff7bc4c87fe22bfa8df3c4b18da0773d73fc12ee2c52b98c0bb7e
+    environment:
+      SITE_HOST: ${SITE_HOST}
+      MANAGEMENT_CIDRS: ${MANAGEMENT_CIDRS:-127.0.0.1/32 ::1/128}
+    ports: ["${HTTPS_BIND:-127.0.0.1}:${HTTPS_PORT:-8443}:443"]
+    volumes: ["${CADDYFILE:?Select reviewed Caddyfile}:/etc/caddy/Caddyfile:ro", "caddy:/data"]
+    networks: [edge]
+    mem_limit: 128m
+  n8n:
+    profiles: [automation]
+    image: docker.n8n.io/n8nio/n8n@sha256:9a8d8dcea75667496695d7810d7e1fe018a65efb36cc499d347f3931b3957b5d
+    environment:
+      N8N_ENCRYPTION_KEY_FILE: /run/secrets/n8n_encryption_key
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      GENERIC_TIMEZONE: Asia/Shanghai
+      TZ: Asia/Shanghai
+      N8N_SECURE_COOKIE: "true"
+    secrets: [n8n_encryption_key]
+    ports: ["127.0.0.1:${N8N_PORT:-5678}:5678"]
+    volumes: [n8n:/home/node/.n8n]
+    networks: [private]
+    mem_limit: 512m
+secrets:
+  mysql_password: {file: "${SECRETS_DIR:?Set private secrets directory}/mysql_password"}
+  mysql_root_password: {file: "${SECRETS_DIR}/mysql_root_password"}
+  redis_password: {file: "${SECRETS_DIR}/redis_password"}
+  rabbit_password: {file: "${SECRETS_DIR}/rabbit_password"}
+  smtp_password: {file: "${SECRETS_DIR}/smtp_password"}
+  ai_api_key: {file: "${SECRETS_DIR}/ai_api_key"}
+  n8n_encryption_key: {file: "${SECRETS_DIR}/n8n_encryption_key"}
+volumes:
+  private: {}
+  mysql: {}
+  qdrant: {}
+  rabbit: {}
+  n8n: {}
+  caddy: {}
+networks:
+  private: {internal: true}
+  edge: {}

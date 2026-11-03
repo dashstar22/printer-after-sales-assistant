@@ -29,6 +29,7 @@ class RuleTopicIT {
     static final JsonMapper JSON=JsonMapper.builder().build();
     static final String HASH="78613ca55b980cbd9b6989ac1e10282abb1810827a8b1ca623be0835e0bbf75e";
     static final String COLLECTION="layered_rules_"+UUID.randomUUID().toString().replace("-","");
+    static final String QDRANT=System.getenv().getOrDefault("PHASE4_QDRANT_URL","http://127.0.0.1:16333");
     static final AtomicInteger embeddings=new AtomicInteger();static HttpServer embedding;
     @DynamicPropertySource static void config(DynamicPropertyRegistry r)throws Exception{
         embedding=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -39,7 +40,7 @@ class RuleTopicIT {
             byte[] body=JSON.writeValueAsBytes(Map.of("data",data));exchange.getResponseHeaders().set("Content-Type","application/json");exchange.sendResponseHeaders(200,body.length);exchange.getResponseBody().write(body);exchange.close();
         });embedding.start();
         r.add("KNOWLEDGE_EMBEDDING_API_KEY",()->"local-fixture");r.add("KNOWLEDGE_EMBEDDING_BASE_URL",()->"http://127.0.0.1:"+embedding.getAddress().getPort()+"/v1");
-        r.add("KNOWLEDGE_VECTOR_COLLECTION",()->COLLECTION);r.add("app.dependencies.qdrant.base-url",()->"http://127.0.0.1:16333");
+        r.add("KNOWLEDGE_VECTOR_COLLECTION",()->COLLECTION);r.add("app.dependencies.qdrant.base-url",()->QDRANT);
         r.add("KNOWLEDGE_CHAT_ALLOWED_HASHES",()->HASH);r.add("KNOWLEDGE_RETRIEVAL_MIN_SCORE",()->"0.6");
     }
     @AfterAll void stop(){embedding.stop(0);}
@@ -54,9 +55,9 @@ class RuleTopicIT {
         order=jdbc.queryForObject("SELECT id FROM orders WHERE customer_id=?",Long.class,customer);
         foreignOrder=jdbc.queryForObject("SELECT o.id FROM orders o JOIN users u ON u.id=o.customer_id WHERE u.username='demo_customer_b'",Long.class);
         Path root=Path.of(System.getenv("LAYERED_REPO_ROOT"));
-        new KnowledgeRegistrationService(mapper,tm).register(root,"docs/sources/business-supplement-reviewed-v1.json",List.of("business-supplement-draft-fields"));
+        new KnowledgeRegistrationService(new KnowledgeApplicationService(mapper,tm)).register(root,"docs/sources/business-supplement-reviewed-v1.json",List.of("business-supplement-draft-fields"));
         document=jdbc.queryForObject("SELECT id FROM knowledge_documents",Long.class);
-        new KnowledgeExtractionService(mapper,tm).extract(root,document,800,100);
+        new KnowledgeExtractionService(new KnowledgeApplicationService(mapper,tm)).extract(root,document,800,100);
         new KnowledgePublicationService(mapper,processing,ds,tm,env).publish(root,document,800,100);
         assertEquals(HASH,mapper.documentById(document).contentHash());assertTrue(embeddings.get()>0);
         System.out.println("LAYERED_RULE_FIXTURE collection="+COLLECTION+" providerCalls=0");
@@ -93,7 +94,7 @@ class RuleTopicIT {
         .withProperty("KNOWLEDGE_EMBEDDING_API_KEY","local-fixture").withProperty("KNOWLEDGE_EMBEDDING_BASE_URL","http://127.0.0.1:9/v1")
         .withProperty("app.dependencies.qdrant.base-url",qdrant).withProperty("KNOWLEDGE_CHAT_ALLOWED_HASHES",allowed).withProperty("KNOWLEDGE_RETRIEVAL_MIN_SCORE","0.6");}
     @Test void separateChatPermissionIsRequired(){
-        var denied=new KnowledgeRetrievalService(mapper,processing,orders,environment("","http://127.0.0.1:16333"),ds,tm);
+        var denied=new KnowledgeRetrievalService(mapper,processing,orders,environment("",QDRANT),ds,tm);
         var result=denied.ruleOwnedForAssistant(customer,order,RuleTopicCatalog.Topic.REQUIRED_FIELDS);
         assertEquals("EVIDENCE_NOT_AUTHORIZED",result.status());assertTrue(result.sources().isEmpty());
         jdbc.update("UPDATE knowledge_documents SET external_upload_allowed=false WHERE id=?",document);
@@ -115,7 +116,7 @@ class RuleTopicIT {
         assertEquals("KNOWLEDGE_VECTOR_UNAVAILABLE",assertThrows(KnowledgeFailure.class,()->unavailable.ruleOwnedForAssistant(customer,order,RuleTopicCatalog.Topic.REQUIRED_FIELDS)).getMessage());
     }
     JsonNode qdrant(String method,String suffix,Object body)throws Exception{
-        var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:16333/collections/"+COLLECTION+suffix)).header("Content-Type","application/json")
+        var request=HttpRequest.newBuilder(URI.create(QDRANT+"/collections/"+COLLECTION+suffix)).header("Content-Type","application/json")
             .method(method,HttpRequest.BodyPublishers.ofByteArray(JSON.writeValueAsBytes(body))).build();
         var response=HttpClient.newHttpClient().send(request,HttpResponse.BodyHandlers.ofString());assertEquals(200,response.statusCode());return JSON.readTree(response.body());
     }

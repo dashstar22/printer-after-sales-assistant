@@ -19,8 +19,13 @@ final class KnowledgeVectorClient {
     private static final JsonMapper JSON=JsonMapper.builder().build();
     final String collection,model;final int dimensions=1024;
     private final String embedding,key,qdrant;
+    private final local.printer.operations.ExternalCallBudget budget;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NEVER).build();
     KnowledgeVectorClient(Environment env){
+        this(env,null);
+    }
+    KnowledgeVectorClient(Environment env,local.printer.operations.ExternalCallBudget budget){
+        this.budget=budget;
         collection=env.getProperty("KNOWLEDGE_VECTOR_COLLECTION","");model=env.getProperty("KNOWLEDGE_EMBEDDING_MODEL","text-embedding-v4");
         key=env.getProperty("KNOWLEDGE_EMBEDDING_API_KEY",env.getProperty("app.dependencies.ai.api-key",""));
         embedding=base(env.getProperty("KNOWLEDGE_EMBEDDING_BASE_URL",env.getProperty("app.dependencies.ai.base-url","")),false);
@@ -44,8 +49,12 @@ final class KnowledgeVectorClient {
                 var builder=HttpRequest.newBuilder(URI.create(url)).timeout(timeout).header("Content-Type","application/json");
                 if(embed)builder.header("Authorization","Bearer "+key);
                 builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(JSON.writeValueAsBytes(body)));
-                var future=http.sendAsync(builder.build(),info->new BoundedBody());HttpResponse<byte[]> response;
-                try{response=future.get(scope==null?Duration.ofSeconds(25).toNanos():scope.remaining().toNanos(),TimeUnit.NANOSECONDS);}catch(Exception e){future.cancel(true);throw e;}
+                var request=builder.build();
+                java.util.concurrent.Callable<HttpResponse<byte[]>> send=()->{
+                    var future=http.sendAsync(request,info->new BoundedBody());
+                    try{return future.get(scope==null?Duration.ofSeconds(25).toNanos():scope.remaining().toNanos(),TimeUnit.NANOSECONDS);}catch(Exception e){future.cancel(true);throw e;}
+                };
+                HttpResponse<byte[]> response=embed&&budget!=null?budget.invoke("EMBEDDING",JSON.writeValueAsBytes(body).length,send):send.call();
                 int status=response.statusCode();
                 if((status==429||status>=500)&&attempt+1<attempts)continue;
                 if(status==404&&notFound)return new Response(status,null);
@@ -107,10 +116,14 @@ final class KnowledgeVectorClient {
     }
     record Candidate(String id,double score,JsonNode payload){}
     List<Candidate> query(List<Double> vector,String modelCode,Collection<String> seen){
+        return query(vector,modelCode,seen,null);
+    }
+    List<Candidate> query(List<Double> vector,String modelCode,Collection<String> seen,Set<Long> allowedDocuments){
         var general=Map.of("key","model_scope","match",Map.of("value","GENERAL"));
         var specific=Map.of("must",List.of(Map.of("key","model_scope","match",Map.of("value","MODELS")),
             Map.of("key","models","match",Map.of("value",modelCode))));
         var filter=new LinkedHashMap<String,Object>();filter.put("should",List.of(general,specific));
+        if(allowedDocuments!=null){if(allowedDocuments.isEmpty())return List.of();filter.put("must",List.of(Map.of("key","document_id","match",Map.of("any",allowedDocuments))));}
         if(!seen.isEmpty())filter.put("must_not",List.of(Map.of("has_id",List.copyOf(seen))));
         var body=Map.of("query",vector,"filter",filter,"limit",20,
             "params",Map.of("exact",true),"with_payload",true,"with_vector",false);

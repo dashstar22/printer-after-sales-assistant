@@ -10,7 +10,7 @@ public interface TicketHandlingMapper {
         + "snapshot_contact_method AS snapshotContactMethod,status,version,accepted_by AS acceptedBy FROM tickets WHERE id=#{id} FOR UPDATE")
     TicketRows.Ticket lock(long id);
 
-    @Update("UPDATE tickets SET status=#{nextStatus},version=version+1,accepted_by=#{acceptedBy} "
+    @Update("UPDATE tickets SET status=#{nextStatus},version=version+1,accepted_by=#{acceptedBy},updated_at=UTC_TIMESTAMP(6) "
         + "WHERE id=#{id} AND status=#{expectedStatus} AND version=#{expectedVersion} AND version<9223372036854775807")
     int advance(@Param("id") long id, @Param("expectedStatus") String expectedStatus, @Param("expectedVersion") long expectedVersion,
                 @Param("nextStatus") String nextStatus, @Param("acceptedBy") Long acceptedBy);

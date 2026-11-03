@@ -34,7 +34,7 @@ class InfrastructureIT {
             var mapper = session.getMapper(ProbeMapper.class);
             assertTrue(mapper.version().startsWith("8.4."));
             assertFalse(mapper.currentUser().startsWith("root@"));
-            assertEquals(List.of("1", "2", "3", "4", "5", "6", "7"), mapper.migrations());
+            assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"), mapper.migrations());
         }
         assertFalse(dependencies.ai().enabled());
         assertEquals("", dependencies.ai().apiKey());

@@ -8,15 +8,19 @@ export function loginView(state, actions) {
   const password = view.querySelector('#password');
   const submit = view.querySelector('#login-submit');
   const preferences=loginPreferences();
-  const remember=view.querySelector('#remember-account');
   const auto=view.querySelector('#auto-login');
-  username.value = state.username || preferences.username;
-  remember.checked=preferences.remember;auto.checked=preferences.autoLogin;
-  remember.addEventListener('change',()=>saveLoginPreferences(username.value.trim(),remember.checked,auto.checked));
-  auto.addEventListener('change',()=>saveLoginPreferences(username.value.trim(),remember.checked,auto.checked));
+  const help=document.createElement('details');help.className='auth-help';
+  const summary=document.createElement('summary');summary.textContent='登录遇到问题？';
+  const explanation=document.createElement('p');explanation.textContent='以前使用用户名登录？为原账号绑定邮箱后即可继续使用，原订单和工单会保留。';
+  const legacy=document.createElement('a');legacy.textContent='使用原账号登录';legacy.href='#/legacy-login';
+  help.append(summary,explanation,legacy);view.append(help);
+  username.value = state.username || '';
+  auto.checked=preferences.autoLogin;
+  auto.addEventListener('change',()=>saveLoginPreferences(auto.checked));
   form.addEventListener('input',()=>showText(view.querySelector('#login-feedback'),''));
   let current = state;
   function update(value) {
+    if(current.pending==='login'&&!value.pending)password.value='';
     current = value;
     showText(view.querySelector('#login-feedback'), value.error || value.notice);
     form.querySelectorAll('input,button').forEach(control => control.disabled = !!value.pending);
@@ -28,9 +32,8 @@ export function loginView(state, actions) {
     if (current.pending || !form.reportValidity()) return;
     const name = username.value.trim();
     const credential = password.value;
-    password.value = '';
-    saveLoginPreferences(name,remember.checked,auto.checked);
+    saveLoginPreferences(auto.checked);
     actions.login(name, credential,auto.checked);
   });
-  return {element:view, update};
+  return {element:view, update, dispose(){password.value='';}};
 }

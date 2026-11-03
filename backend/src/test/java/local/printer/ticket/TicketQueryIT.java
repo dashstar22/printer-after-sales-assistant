@@ -168,10 +168,10 @@ class TicketQueryIT {
         error(browser.request("GET","/api/tickets/"+bIds.get(0)+suffix,null),404,"TICKET_NOT_FOUND");
     }
     @Test void unsupportedRoleFailsClosedInsideService() {
-        var unknown=new SessionUser.Identity(a,usernameA,"ADMIN");
+        var unknown=new SessionUser.Identity(a,usernameA,"AUTOMATION");
         assertThrows(AccessDeniedException.class,()->service.list(unknown,1,20,null,null));
         assertThrows(AccessDeniedException.class,()->service.detail(unknown,aIds.get(0)));
-        // V1 CHECK and the login provider only permit CUSTOMER/STAFF; no fabricated HTTP session.
+        // V8 permits ADMIN; automation is not a login business role. No fabricated HTTP session.
     }
     @Test void statusesCombinedWithKeywordAndOwner() throws Exception {
         var browser=customerA();assertEquals(3,ok(browser.request("GET","/api/tickets?status=PENDING",null)).get("total").asInt());

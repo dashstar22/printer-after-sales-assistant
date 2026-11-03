@@ -6,11 +6,16 @@ const limits=[2000,2000,100,200];
 
 export function repairScreen(host,ctx,draftId){
   const root=el('section',null,'repair-layout');host.replaceChildren(root);
-  let draft=null,confirmation=null,operation=null,ticket=null,dirty=false,unknown=false,busy=false,orders=[],note='';
+  let draft=null,confirmation=null,operation=null,ticket=null,dirty=false,unknown=false,busy=false,orders=[],note='',relatedConversationId=null,relatedOrderId=null,disposed=false;
   const formValues={orderId:'',symptom:'',extra:'',contact:'',contactMethod:''};
-  function hint(patch){return ctx.locator.save({repair:patch});}
+  function hint(patch){return ctx.locator.save({repair:patch?{...patch,conversationId:relatedConversationId}:null});}
+  async function verifyRelation(id,orderId){
+    if(typeof id!=='string'||! /^[a-f0-9-]{36}$/.test(id))return;
+    try{const value=await api.get('/api/conversations/'+id+'?page=1&size=1');if(!disposed&&value.orderId===Number(orderId)&&orders.some(o=>o.id===value.orderId)){relatedConversationId=value.id;relatedOrderId=value.orderId;}}catch(e){if(![400,404].includes(e.status))throw e;}
+  }
   function showDraft(value){draft=value;fields.forEach(k=>formValues[k]=value[k]);formValues.orderId=String(value.orderId);dirty=false;confirmation=null;}
   function render(){
+    if(disposed)return;
     root.replaceChildren();
     const editor=el('section',null,'workspace-panel');editor.append(el('p','01 / 保存内容','eyebrow'),el('h2','先把现场情况交代清楚。'));
     const form=el('form');form.id='repair-form';form.noValidate=true;
@@ -19,7 +24,7 @@ export function repairScreen(host,ctx,draftId){
     form.append(field('设备订单',select));
     const info=el('p',orders.find(o=>String(o.id)===formValues.orderId)?orderInfo(orders.find(o=>String(o.id)===formValues.orderId)):'请选择本人订单。','subtle');form.append(info);
     function edited(){dirty=true;confirmation=null;const agree=root.querySelector('#repair-agreed');if(agree)agree.checked=false;sync();}
-    select.addEventListener('change',()=>{formValues.orderId=select.value;const o=orders.find(x=>String(x.id)===select.value);info.textContent=o?orderInfo(o):'请选择本人订单。';edited();});
+    select.addEventListener('change',()=>{formValues.orderId=select.value;if(Number(select.value)!==relatedOrderId){relatedConversationId=null;relatedOrderId=null;}const o=orders.find(x=>String(x.id)===select.value);info.textContent=o?orderInfo(o):'请选择本人订单。';edited();});
     fields.forEach((k,i)=>{
       const input=el(i<2?'textarea':'input');input.id='repair-'+k;input.value=formValues[k];input.required=true;input.maxLength=limits[i]*2;if(i<2)input.rows=3;
       if(i>=2)input.autocomplete='off';
@@ -31,6 +36,7 @@ export function repairScreen(host,ctx,draftId){
     if(draft)actions.append(button('刷新已保存内容',()=>ctx.run(async()=>{showDraft(await api.get('/api/repair-drafts/'+draft.id));note='已刷新报修内容，请核对后重新确认。';render();})));
     actions.append(link('新建另一份报修','#/customer/repair/new'));editor.append(actions);
     const review=el('section',null,'workspace-panel review-panel');review.append(el('p','02 / 核对并确认','eyebrow'),el('h2','这份内容，将随工单一起保存。'));
+    if(relatedConversationId)review.append(el('p','此报修会关联当前设备的咨询记录；提交后的新增咨询不会加入该工单。','subtle'));
     if(note)review.append(el('p',note,'inline-notice'));
     if(draft){
       review.append(el('p',`草稿 ${draft.id} · 已保存版本 ${draft.version}`,'draft-meta'),pairs([['订单 / 型号',orderLabel(draft.order)],['设备信息',orderInfo(draft.order)],...fields.map((k,i)=>[labels[i],draft[k]])]));
@@ -100,7 +106,7 @@ export function repairScreen(host,ctx,draftId){
     hint(operation);unknown=true;busy=true;render();
     try{
       // Same deterministic coordinator as the ordinary form. No model-generated grant or follow-up is required.
-      const value=await api.write(`/api/ticket-operations/${operation.operationId}/execute`,{confirmationId:operation.confirmationId,draftId:operation.draftId,expectedVersion:operation.draftVersion});
+      const value=await api.write(`/api/ticket-operations/${operation.operationId}/execute`,{confirmationId:operation.confirmationId,draftId:operation.draftId,expectedVersion:operation.draftVersion,...(relatedConversationId?{conversationId:relatedConversationId}:{})});
       ticket=value.ticket;unknown=false;note='报修已提交成功。';
     }finally{busy=false;render();}
   }
@@ -139,6 +145,7 @@ export function repairScreen(host,ctx,draftId){
       const id=draftId||stored?.draftId;
       if(id){
         showDraft(await api.get('/api/repair-drafts/'+encodeURIComponent(id)));
+        if(Number(id)===stored?.draftId)await verifyRelation(stored.conversationId,draft.orderId);
         if(stored?.operationId&&Number(id)===stored.draftId){operation=stored;unknown=true;await recover();}
         else hint({draftId:draft.id});
       }else{
@@ -155,12 +162,12 @@ export function repairScreen(host,ctx,draftId){
                 source=batch.messages.items.find(m=>m.role==='USER'&&m.turnId===handoff.turnId);
               }
               if(source && [...source.content].length<=limits[0]){
-                formValues.orderId=String(conversation.orderId);formValues.symptom=source.content;dirty=true;
+                formValues.orderId=String(conversation.orderId);formValues.symptom=source.content;relatedConversationId=conversation.id;relatedOrderId=conversation.orderId;dirty=true;
               }
             }
           }catch(error){if(error.status!==404&&error.status!==400)throw error;}
         }
       }
     }finally{busy=false;render();}
-  },dispose(){root.remove();}};
+  },dispose(){disposed=true;root.remove();}};
 }

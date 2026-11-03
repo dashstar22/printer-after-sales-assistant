@@ -82,7 +82,7 @@ class TicketPersistenceIT {
     }
 
     @Test void v1AndV2AreSuccessfulExactlyOnce() {
-        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7"), jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank", String.class));
+        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank", String.class));
         assertEquals(593940007, jdbc.queryForObject("SELECT checksum FROM flyway_schema_history WHERE version='1'", Integer.class));
     }
 

@@ -1,0 +1,48 @@
+# Local portfolio dependencies reuse the reviewed Linux image pins and settings.
+# The launcher supplies a new project name and private random secrets for each instance.
+services:
+  mysql:
+    extends: {file: ../linux/compose.yaml, service: mysql}
+    networks: [private, hostbridge]
+    ports: ["127.0.0.1:${PORTFOLIO_MYSQL_PORT}:3306"]
+  redis:
+    extends: {file: ../linux/compose.yaml, service: redis}
+    networks: [private, hostbridge]
+    ports: ["127.0.0.1:${PORTFOLIO_REDIS_PORT}:6379"]
+  rabbitmq:
+    extends: {file: ../linux/compose.yaml, service: rabbitmq}
+    networks: [private, hostbridge]
+    ports: ["127.0.0.1:${PORTFOLIO_RABBIT_PORT}:5672"]
+  qdrant:
+    extends: {file: ../linux/compose.yaml, service: qdrant}
+    networks: [private, hostbridge]
+    ports: ["127.0.0.1:${PORTFOLIO_QDRANT_PORT}:6333"]
+  mailpit:
+    image: axllent/mailpit@sha256:9b3a463be15354c0f0eba91697d80e3e0d8a5623ef0e627cacc836bc17fd5231
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: "500"
+      MP_DISABLE_VERSION_CHECK: "true"
+    ports: ["127.0.0.1:${PORTFOLIO_SMTP_PORT}:1025", "127.0.0.1:${PORTFOLIO_MAIL_PORT}:8025"]
+    volumes: [mail:/data]
+    networks: [private, hostbridge]
+    mem_limit: 128m
+secrets:
+  mysql_password: {file: "${SECRETS_DIR}/mysql_password"}
+  mysql_root_password: {file: "${SECRETS_DIR}/mysql_root_password"}
+  redis_password: {file: "${SECRETS_DIR}/redis_password"}
+  rabbit_password: {file: "${SECRETS_DIR}/rabbit_password"}
+volumes:
+  mysql: {}
+  rabbit: {}
+  qdrant: {}
+  mail: {}
+networks:
+  private:
+    name: ${PORTFOLIO_PRIVATE_NETWORK}
+    internal: true
+    ipam: {config: [{subnet: "${PORTFOLIO_PRIVATE_SUBNET}"}]}
+  # Docker Engine 29 does not publish host ports on internal-only networks.
+  # Host Java uses this bridge; every published port remains bound to loopback.
+  hostbridge:
+    ipam: {config: [{subnet: "${PORTFOLIO_HOST_SUBNET}"}]}

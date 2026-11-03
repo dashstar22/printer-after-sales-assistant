@@ -46,9 +46,5 @@ __pycache__/
 Thumbs.db
 Desktop.ini
 
-# Private source material and runtime data
-.env.seed
-*.sql.gz
-*.sql.zip
-mysql-data/
-qdrant-data/
+# Local generated regression reports
+docs/evidence/

@@ -140,11 +140,13 @@ class TicketHandlingIT {
         assertEquals(status,mapper.ticket(w.ticket()).status());assertEquals(version,mapper.ticket(w.ticket()).version());
     }
 
-    @Test void fullWorkflowWithAnotherStaffCollaborationAndCustomerRead() throws Exception {
+    @Test void fullWorkflowRestrictsOtherStaffAndCustomerRead() throws Exception {
         var w=fresh();var frozen=frozen(w);var first=staffOne();var other=staffTwo();
         var accept=send(first,w,"accept",0);result(accept,w,"IN_PROGRESS",1,staff,staff,"ACCEPTED");assertEquals("客服接单",accept.get("event").get("note").asString());
-        var note=send(other,w,"notes",1);result(note,w,"IN_PROGRESS",2,staff,staff2,"NOTE");assertEquals("已检查进纸器\n等待复测 🖨",note.get("event").get("note").asString());
-        result(send(other,w,"close",2),w,"CLOSED",3,staff,staff2,"CLOSED");assertEquals(frozen,frozen(w));assertEquals(4,mapper.events(w.ticket()).size());
+        error(other.request("POST",path(w,"notes"),input("notes",1)),403,"FORBIDDEN");
+        error(other.request("POST",path(w,"close"),input("close",1)),403,"FORBIDDEN");
+        var note=send(first,w,"notes",1);result(note,w,"IN_PROGRESS",2,staff,staff,"NOTE");assertEquals("已检查进纸器\n等待复测 🖨",note.get("event").get("note").asString());
+        result(send(first,w,"close",2),w,"CLOSED",3,staff,staff,"CLOSED");assertEquals(frozen,frozen(w));assertEquals(4,mapper.events(w.ticket()).size());
         var owner=customerA();var detail=ok(owner.request("GET","/api/tickets/"+w.ticket(),null));assertEquals("CLOSED",detail.get("status").asString());assertEquals(4,detail.get("events").size());
         long previous=0;for(var event:detail.get("events")){long id=event.get("id").asLong();assertTrue(id>previous);previous=id;}
         var page=ok(owner.request("GET","/api/tickets?status=CLOSED&keyword="+mapper.ticket(w.ticket()).ticketNo(),null));assertEquals(w.ticket(),page.get("items").get(0).get("id").asLong());
@@ -228,7 +230,7 @@ class TicketHandlingIT {
     }
     void race(String firstAction,String secondAction) throws Exception {
         var w=fresh();if(!firstAction.equals("accept"))accepted(w);var before=frozen(w);long version=mapper.ticket(w.ticket()).version();int count=mapper.events(w.ticket()).size();
-        var oneClient=staffOne();var twoClient=staffTwo();var pool=Executors.newFixedThreadPool(2);var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
+        var oneClient=staffOne();var twoClient=firstAction.equals("accept")?staffTwo():staffOne();var pool=Executors.newFixedThreadPool(2);var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
         try(var blocker=dataSource.getConnection()) {
             blocker.setAutoCommit(false);lock(blocker,w.ticket());
             var one=pool.submit(()->{ready.countDown();assertTrue(go.await(5,TimeUnit.SECONDS));return oneClient.request("POST",path(w,firstAction),input(firstAction,version));});
@@ -237,7 +239,7 @@ class TicketHandlingIT {
             blocker.commit();var r1=one.get(12,TimeUnit.SECONDS);var r2=two.get(12,TimeUnit.SECONDS);
             assertEquals(List.of(200,409),List.of(r1.statusCode(),r2.statusCode()).stream().sorted().toList());
             boolean firstWon=r1.statusCode()==200;var winner=ok(firstWon?r1:r2);error(firstWon?r2:r1,409,"TICKET_CONFLICT");
-            long actor=firstWon?staff:staff2;String action=firstWon?firstAction:secondAction;
+            long actor=firstWon||!firstAction.equals("accept")?staff:staff2;String action=firstWon?firstAction:secondAction;
             assertEquals(version+1,mapper.ticket(w.ticket()).version());assertEquals(count+1,mapper.events(w.ticket()).size());assertEquals(before,frozen(w));
             var last=mapper.events(w.ticket()).get(count);assertEquals(actor,last.actorId());assertEquals(actor,winner.get("event").get("actorId").asLong());
             if(action.equals("accept"))assertEquals(actor,mapper.ticket(w.ticket()).acceptedBy());

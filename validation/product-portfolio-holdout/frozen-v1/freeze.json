@@ -1,0 +1,21 @@
+{
+  "dataset": "portfolio-holdout-02-8-v1",
+  "model": "PRINT-HOLDOUT-02",
+  "frozen_at": "2026-11-03T06:48:19.694928+00:00",
+  "files": {
+    "PRINT-HOLDOUT-02.md": "9f97e88d24fde678f2c4fe9f844af1084fa94d5dbe4acbd96d9464abd1a5bca0",
+    "questions.json": "a11c1722e2f4c8f7d60dfe978809e9bfac3cbc92cd807e5485cf5de6d0cd0e4f",
+    "LICENSE.txt": "8a2126e60a56a48f2e905013d9507c7a5fa823c80d7c484127f45b620c7efbcf"
+  },
+  "cases": 8,
+  "answerable": 6,
+  "uncovered": 2,
+  "authorship": "AI_AUTHORED_AI_REVIEWED_NOT_INDEPENDENT_HUMAN",
+  "tuning_boundary": "Only high-level fact categories and model identifier shared with implementation agents; exact source, questions and gold withheld until final code freeze and execution. Authoring agent does not perform subsequent host fixes.",
+  "execution": "NOT_RUN",
+  "external_calls": 0,
+  "attempts_per_case": 1,
+  "publication": "One new model/order and one separately scoped publication through normal admin APIs; existing datasets unchanged",
+  "review": "AI-assisted judgments only; no independent human or target user asserted",
+  "cost": "Uses existing durable per-task/per-turn/day budgets; actual charges unknown until execution evidence"
+}

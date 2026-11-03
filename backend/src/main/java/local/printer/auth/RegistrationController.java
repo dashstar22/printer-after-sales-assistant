@@ -7,9 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import tools.jackson.databind.JsonNode;
 
-@RestController
-@RequestMapping("/api/auth/register")
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@Deprecated // Historical contract only. EmailIdentityController owns the public route.
 public class RegistrationController {
     private final RegistrationService service;
     public RegistrationController(RegistrationService service) { this.service = service; }
