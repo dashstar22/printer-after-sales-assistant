@@ -1,10 +1,87 @@
-# 纸序 · 打印机售后知识与工单助手
+<div align="center">
+
+<img src="docs/images/avatar.png" width="168" height="168" alt="纸序项目头像" />
+
+<h1>纸序 · 打印机售后助手</h1>
+
+<p><strong>有据可查的 AI 咨询，有迹可循的工单服务。</strong></p>
+
+<p>从设备咨询到确认报修，再到客服处理与进度查回的 Java RAG 应用。</p>
+
+<p>
+  <a href="https://www.oracle.com/java/technologies/downloads/#java17"><img src="https://img.shields.io/badge/Java-17-E76F00?logo=openjdk&amp;logoColor=white" alt="Java 17" /></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring_Boot-4.1.2-6DB33F?logo=springboot&amp;logoColor=white" alt="Spring Boot 4.1.2" /></a>
+  <a href="https://docs.langchain4j.dev/"><img src="https://img.shields.io/badge/AI-LangChain4j-7954A1" alt="LangChain4j" /></a>
+  <a href="https://qdrant.tech/"><img src="https://img.shields.io/badge/RAG-Qdrant_%2B_Lucene-6D4A8C" alt="RAG with Qdrant and Lucene" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DA66D" alt="MIT License" /></a>
+</p>
+
+<p>
+  <a href="#运行截图">运行截图</a> ·
+  <a href="#功能">项目功能</a> ·
+  <a href="#快速启动">快速启动</a> ·
+  <a href="docs/architecture.md">架构说明</a> ·
+  <a href="docs/evaluation.md">评测记录</a>
+</p>
+
+<p>
+  作者：<a href="https://github.com/dashstar22">dashstar22</a> &nbsp;·&nbsp;
+  QQ 邮箱：<a href="mailto:1025073706@qq.com">1025073706@qq.com</a>
+</p>
+
+</div>
+
+---
+
+## 项目介绍
 
 一个可在本机复现的 Java AI 应用项目，把“查看设备 → 查阅资料 → 确认报修 → 客服处理 → 查询结果”连成完整流程。
 
 项目侧重 RAG 与业务系统的连接：回答需要有适用资料和可展开的引用，写入工单需要用户在页面明确确认，依赖故障时仍能使用普通报修。设备、订单及随仓库分发的知识样例均为合成演示数据。
 
 这是个人学习与作品展示项目，使用 AI 辅助开发，尚无真实客户采用或商业效果验证。
+
+## 运行截图
+
+以下图片来自实际运行页面，设备、订单和资料均为合成演示数据。AI 引用图展示已保存的真实模型回答；其余页面来自公开源码的离线运行实例，保留页面上的模式提示。画廊使用等比例缩略图，工单图预览处理时间线局部；点击图片可查看完整原图。
+
+<p align="center">
+  <a href="docs/images/customer-overview.jpg"><img src="docs/images/customer-overview.jpg" width="960" alt="客户服务首页：咨询、报修、工单进度与本人设备" /></a>
+  <br />
+  <sub>客户服务首页 · 从设备咨询到报修进度</sub>
+</p>
+
+<table>
+  <tr>
+    <th width="50%">有来源的 AI 回答</th>
+    <th width="50%">知识资料管理</th>
+  </tr>
+  <tr>
+    <td><a href="docs/images/ai-answer-with-citation.jpg"><img src="docs/images/ai-answer-with-citation-preview.jpg" alt="真实 AI 回答与展开的来源引用，资料为自编合成样例" width="100%" /></a></td>
+    <td><a href="docs/images/knowledge-management.jpg"><img src="docs/images/knowledge-management-preview.jpg" alt="管理员查看资料目录、适用型号与有效版本" width="100%" /></a></td>
+  </tr>
+  <tr>
+    <td align="center">查看回答依据、适用条件和完整原文</td>
+    <td align="center">登记资料，核查分块，确认发布与生效</td>
+  </tr>
+  <tr>
+    <th>客户工单时间线</th>
+    <th>客服工单工作台</th>
+  </tr>
+  <tr>
+    <td><a href="docs/images/customer-ticket.jpg"><img src="docs/images/customer-ticket-preview.jpg" alt="客户查询已关闭工单与实际处理时间线" width="100%" /></a></td>
+    <td><a href="docs/images/staff-workbench.jpg"><img src="docs/images/staff-workbench-preview.jpg" alt="客服按状态筛选、查看与处理工单" width="100%" /></a></td>
+  </tr>
+  <tr>
+    <td align="center">报修内容、负责人和处理结果持续可查</td>
+    <td align="center">待接单、处理中、已关闭状态清晰可见</td>
+  </tr>
+</table>
+
+<details>
+  <summary>查看登录页面</summary>
+  <p align="center"><a href="docs/images/service-login.jpg"><img src="docs/images/service-login.jpg" width="960" alt="纸序登录页，使用邮箱与密码进入售后服务" /></a></p>
+</details>
 
 ## 功能
 
@@ -107,6 +184,13 @@ samples/portfolio/        自编 CC0 演示资料
 validation/product-portfolio-holdout/  已公开的 8 问冻结集与执行器
 docs/                     架构、运行与评测说明
 ```
+
+## 联系作者
+
+欢迎交流 Java、RAG 与 AI 应用开发，也欢迎通过 [Issues](https://github.com/dashstar22/printer-after-sales-assistant/issues) 反馈复现问题。
+
+- GitHub：[dashstar22](https://github.com/dashstar22)
+- QQ 邮箱：[1025073706@qq.com](mailto:1025073706@qq.com)
 
 ## 许可
 
