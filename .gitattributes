@@ -14,3 +14,4 @@
 backend/src/main/resources/static/app/assets/** -text
 backend/src/main/resources/static/app/licenses/** -text
 backend/src/main/resources/static/app/vendor/*.js -text
+*.sh text eol=lf

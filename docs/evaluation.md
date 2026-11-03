@@ -41,7 +41,11 @@ python validation/product-portfolio-holdout/run.py verify --package validation/p
 
 最终实现的 quick 回归为 380 项：344 PASS、0 FAIL、36 专用环境 SKIP。36 项分别属于 Phase5ApiTest 7、StoreDatabaseTest 6、Phase5CandidateCacheTest 11、ExternalCallBudgetTest 10、RedisProtectionTest 2。它们有独立集成通过证据：Phase5ApiTest 的 7 项按最终源码实跑，其他 29 项复用本次较早未变模块的验证，不声称全部用最终包重跑。完整隔离中间件合计 52 次执行通过，其中含继承场景重复执行，不能当作 52 个新增能力。
 
-最终源码还完成真实 HTTP/MySQL/Redis 的 Phase5 7/7（模型与检索用本地协议 fixture），最终 JAR 在新空库完成真实 DashScope 初始化链：CC0 样例发布 7 个片段、有据与无依据问答、显式确认、幂等建单、客服关闭、客户查回、重启后引用和时间线保留。桌面 1440 与手机 390 宽度检查通过。邮件为 Mailpit 本机捕获，外部邮箱实收和真实用户试用仍未验证。
+最终源码还完成真实 HTTP/MySQL/Redis 的 Phase5 7/7（模型与检索用本地协议 fixture），最终 JAR 在新空库完成真实 DashScope 初始化链：CC0 样例发布 7 个片段、有据与无依据问答、显式确认、幂等建单、客服关闭、客户查回、重启后引用和时间线保留。桌面 1440 与手机 390 宽度检查通过。这次最终包演示的邮件由 Mailpit 本机捕获，通知关闭，没有重新执行外部投递。
+
+此前指定候选版本已在 2026-11-02 完成真实外部渠道专项验收：QQ SMTP 邮件 7 次发送、7 次本人实收及链接操作；飞书群超时提醒和日报各 1 条，均有本人实收确认。另有指定版本的 19 项隔离部署、故障、加密备份与空目标恢复检查通过，包含 10 项真实 MySQL 预算测试的结果。它们保留原日期、包版本和分母，不与最终 quick 累加，也不称为最终包上的新增执行。详细范围及脱敏回执见 [验证记录](verification.md)。
+
+QQ 的旧账号迁移使用全新合成旧数据和分开的副本，不能据此声称真实客户历史库迁移成功；飞书批次已停止且写凭证已撤销，不代表持续调度运行。备份恢复在 Windows Docker Desktop 的 Linux 容器中演练，尚未验证独立 Linux 主机、异地容灾或公网生产部署。真实目标用户试用和独立人工答案盲审仍未验证，开发者本人确认邮件/群消息实收不等于这两项验证。
 
 源码回归：`python -X utf8 scripts/regression.py quick`；独立中间件：`python -X utf8 scripts/regression.py middleware`。前者不需要中间件，后者新建隔离容器并在结束后停止、保留数据；两者均无外部模型调用。历史 opt-in `*IT` 中部分依赖未公开厂商语料，不属于这些可复现入口。
 

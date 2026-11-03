@@ -1,0 +1,402 @@
+{
+  "id": "controlled-printer-summary",
+  "name": "受控批次：售后前一自然日日报",
+  "active": false,
+  "nodes": [
+    {
+      "id": "Manual",
+      "name": "Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "Enabled",
+      "name": "Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        360,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Enabled",
+              "leftValue": "={{ $env.AFTER_SALES_AUTOMATION_ENABLED === 'true' && !!$env.AFTER_SALES_TARGET_ID && !!$env.AFTER_SALES_APP_URL }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "Initial-query",
+      "name": "Initial query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{}}];"
+      }
+    },
+    {
+      "id": "MCP-query",
+      "name": "MCP query",
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "serverTransport": "httpStreamable",
+        "endpointUrl": "={{ $env.AFTER_SALES_APP_URL + '/mcp' }}",
+        "authentication": "bearerAuth",
+        "tool": {
+          "mode": "id",
+          "value": "get_service_summary"
+        },
+        "inputMode": "json",
+        "jsonInput": "{}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "CONFIGURE_AUTOMATION_READ",
+          "name": "After sales automation read"
+        }
+      }
+    },
+    {
+      "id": "Events",
+      "name": "Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const raw=$input.first().json;\nconst text=raw.content?.find(c=>c.type==='text')?.text;\nconst value=raw.structuredContent ?? (typeof text==='string'?JSON.parse(text):text ?? raw);\nif(raw.isError || value.code) throw new Error('MCP_QUERY_FAILED');\nreturn [{json:{eventKey:'summary',targetId:$env.AFTER_SALES_TARGET_ID,businessDate:value.date,window:value.date,summary:value}}];"
+      }
+    },
+    {
+      "id": "Loop-events",
+      "name": "Loop events",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1080,
+        0
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
+      }
+    },
+    {
+      "id": "Claim",
+      "name": "Claim",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AFTER_SALES_APP_URL + '/api/integrations/notification-deliveries/claim' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {eventKey:$json.eventKey,targetId:$json.targetId,businessDate:$json.businessDate,window:$json.window,requestId:('00000000-0000-4000-8000-'+Math.random().toString(16).slice(2).padEnd(12,'0').slice(0,12))} }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth"
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "CONFIGURE_NOTIFICATION_WRITE",
+          "name": "After sales notification write"
+        }
+      }
+    },
+    {
+      "id": "Check-claim",
+      "name": "Check claim",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r=$json;if(r.statusCode!==200)throw new Error('CLAIM_FAILED');return [{json:r.body}];"
+      }
+    },
+    {
+      "id": "Send-once",
+      "name": "Send once",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1620,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Send once",
+              "leftValue": "={{ $json.shouldSend === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "Notify",
+      "name": "Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AFTER_SALES_APP_URL + '/api/integrations/notification-deliveries/' + $('Check claim').item.json.id + '/dispatch' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {claimToken:$('Check claim').item.json.claimToken,stepId:\"CONFIGURE_SUMMARY_STEP_ID\"} }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "CONFIGURE_NOTIFICATION_WRITE",
+          "name": "After sales notification write"
+        }
+      },
+      "retryOnFail": false
+    },
+    {
+      "id": "Check-result",
+      "name": "Check result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        0
+      ],
+      "parameters": {
+        "jsCode": "if($json.statusCode!==200 || $json.body?.status!=='SENT')throw new Error('CONTROLLED_SEND_STOP_REVIEW_REQUIRED');return [{json:{recorded:true}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual": {
+      "main": [
+        [
+          {
+            "node": "Enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enabled": {
+      "main": [
+        [
+          {
+            "node": "Initial query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initial query": {
+      "main": [
+        [
+          {
+            "node": "MCP query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP query": {
+      "main": [
+        [
+          {
+            "node": "Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Events": {
+      "main": [
+        [
+          {
+            "node": "Loop events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop events": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim": {
+      "main": [
+        [
+          {
+            "node": "Check claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check claim": {
+      "main": [
+        [
+          {
+            "node": "Send once",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send once": {
+      "main": [
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify": {
+      "main": [
+        [
+          {
+            "node": "Check result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check result": {
+      "main": [
+        [
+          {
+            "node": "Loop events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "Asia/Shanghai",
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  }
+}

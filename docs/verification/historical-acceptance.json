@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "kind": "SANITIZED_HISTORICAL_ACCEPTANCE_SUMMARY",
+  "recorded_date": "2026-11-02",
+  "summary_date": "2026-11-03",
+  "new_external_calls": 0,
+  "synthetic_business_data": true,
+  "feishu": {
+    "status": "PASS_REAL_CHANNEL_TWO_HUMAN_RECEIPTS_AND_DISABLED_BUSINESS",
+    "jar_sha256": "0435aad1751e309a5597dc89c47fd63b931e2f97754c2934be2a4834da63102a",
+    "source": {
+      "record": "f49-real-20261102T083323-623a18.json",
+      "sha256": "2fb0af55d986040c050a215935dde2f7f0cb0ae3a6c180e6c4b0349e0e8dbf57"
+    },
+    "messages_sent": 2,
+    "human_receipts": 2,
+    "purposes": [
+      "overdue",
+      "summary"
+    ],
+    "write_credential_revoked": true,
+    "revoked_write_status": 401,
+    "batch_stopped": true,
+    "scheduled_workflow_active": false
+  },
+  "qq_mail": {
+    "status": "PASS_SEVEN_REAL_INBOX_ACTIONS_AND_SEPARATE_COPY_MIGRATION",
+    "jar_sha256": "ab815ec39f147075b8bf976e937624f8a993a04e87a98f8ec6a3047b134888c4",
+    "source": {
+      "record": "f73-real-f73-qq-20261102T093536-cfb469.json",
+      "sha256": "61e73a8387809b711310b4db9a5306c369650eadc25256870b6d128789cf95e8"
+    },
+    "reconciliation_source": {
+      "record": "f73-real-final-reconciliation-20261102.json",
+      "sha256": "868e826cef758fd4e45be3103d84574f85a503c1ccbfdafc28987e49f9e087d6"
+    },
+    "smtp_attempts": 7,
+    "human_receipts": 7,
+    "link_actions": 7,
+    "purposes": {
+      "BIND": 3,
+      "RESET": 2,
+      "REGISTER": 1,
+      "INVITE": 1
+    },
+    "physical_email_rows": 13,
+    "copied_history_rows_excluded": 6,
+    "batch_stopped": true,
+    "migration_scope": "Fresh synthetic V10 to V15 in five separate copies; not real customer migration"
+  },
+  "deployment_recovery": {
+    "status": "PASS",
+    "jar_sha256": "ab815ec39f147075b8bf976e937624f8a993a04e87a98f8ec6a3047b134888c4",
+    "source": {
+      "record": "f73-recovery/verification-20261102T091843-36d641.json",
+      "sha256": "ac1a934676f51f47dce39ec01112d1263efea4d48dd066eb5ca34f035eddc55d"
+    },
+    "check_count": 19,
+    "budget_tests_included": 10,
+    "backup_files": 147,
+    "restored_tables": 46,
+    "checks": [
+      {
+        "name": "F51_Linux_Compose_HTTPS_health_and_management_gate",
+        "status": "PASS"
+      },
+      {
+        "name": "explicit_initialization_then_verified_admin_binding",
+        "status": "PASS"
+      },
+      {
+        "name": "F50_persistent_budget_tests",
+        "status": "PASS"
+      },
+      {
+        "name": "fixture_business_and_private_files_and_published_reference",
+        "status": "PASS"
+      },
+      {
+        "name": "n8n_inactive_workflows_and_encrypted_credential",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_SMTP_failure_verified_business_continues_unverified_rejected",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_Redis_failure_bounded_fallback_business_continues",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_RabbitMQ_failure_and_restart_recover_persisted_job",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_Qdrant_failure_has_explicit_degradation",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_model_protocol_failure_does_not_block_confirmed_ticket",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_n8n_failure_does_not_block_ticket",
+        "status": "PASS"
+      },
+      {
+        "name": "F50_background_publication_cannot_bypass_daily_budget",
+        "status": "PASS"
+      },
+      {
+        "name": "F52_real_encrypted_backup_and_full_restic_read_check",
+        "status": "PASS"
+      },
+      {
+        "name": "F52_decrypted_restore_all_file_hashes_match",
+        "status": "PASS"
+      },
+      {
+        "name": "F52_restore_to_empty_distinct_resources_counts_equal_before_invalidation",
+        "status": "PASS"
+      },
+      {
+        "name": "F52_identity_ownership_preserved_old_links_sessions_remember_rejected_no_resend",
+        "status": "PASS"
+      },
+      {
+        "name": "F52_HTTP_ticket_photo_historical_citations_active_dual_index_and_n8n_key_restored",
+        "status": "PASS"
+      },
+      {
+        "name": "F53_old_JAR_schema_gate_refuses_incompatible_rollback",
+        "status": "PASS"
+      },
+      {
+        "name": "isolated_candidate_ingress_and_writers_stopped_after_validation",
+        "status": "PASS"
+      }
+    ],
+    "environment": "Windows Docker Desktop Linux containers; local protocol models and Mailpit",
+    "production_deployment": false,
+    "offsite_recovery_verified": false
+  },
+  "limitations": [
+    "Historical runs bound to specified artifacts, not newly executed on the final package",
+    "Sanitized summary is not a complete independent reproduction record",
+    "No credentials, recipient addresses, one-time links, webhook URLs or private ledgers distributed",
+    "Human inbox receipt is not independent human answer review or real target-user adoption"
+  ]
+}

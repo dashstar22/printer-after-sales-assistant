@@ -1,0 +1,11 @@
+# Additional file ONLY for the explicit offline first-admin command.
+services:
+  app:
+    environment:
+      ADMIN_INIT_USERNAME: ${ADMIN_INIT_USERNAME:?Choose an explicit initial administrator username}
+      KNOWLEDGE_JOBS_ENABLED: "false"
+      AI_ENABLED: "false"
+    secrets: [admin_init_password]
+secrets:
+  admin_init_password:
+    file: ${SECRETS_DIR}/admin_init_password

@@ -62,3 +62,11 @@ python -X utf8 scripts/portfolio_runtime.py start --instance my-real-demo
 私有目录为 `.local-validation/portfolio/<实例>/`，包含 runtime.json、secrets、进程状态、发布回执和日志，已由 Git 忽略，不应对外分享。`PACKAGE_HASH_MISMATCH` 表示固定包被替换；`COMPOSE_FAILED` 查实例内 compose-errors.log；依赖就绪超时查 Docker 和 application.log。不要通过清空数据库解决不明故障。
 
 此启动器用于本机作品演示。公网部署须另外验证 HTTPS、代理、邮件实收、秘密管理、访问控制和备份恢复。
+
+## 外部邮件、通知及部署恢复
+
+本机运行器的 offline/real 仅区分 AI 依赖。两种模式都将 SMTP 指向回环地址的 Mailpit，并关闭外部通知；`real` 不会启用 QQ 邮件或飞书。Mailpit 是接收应用测试邮件的本地 SMTP 服务，不会读取或抓取 QQ 收件箱。
+
+指定历史版本在 2026-11-02 已完成 QQ 邮件 7 封和飞书群 2 条的本人实收验证；19 项部署恢复与故障检查也有历史通过记录。这些结果与本次最终包演示分开，版本和局限见 [验证记录](verification.md)。
+
+可选外部渠道和默认停用的 n8n 受控模板见 [邮件与自动化](automation.md)。独立部署、restic 备份和空目标恢复的配套源码及准备要求见 [部署与恢复](deployment.md)。这些入口需要单独配置环境和私有凭据，不能仅修改演示实例的 SMTP 地址或导入模板就认为已经可用。

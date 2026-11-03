@@ -1,0 +1,9 @@
+{$SITE_HOST} {
+    @blocked {
+        path /api/admin/* /mcp /api/integrations/*
+        not remote_ip {$MANAGEMENT_CIDRS}
+    }
+    respond @blocked 403
+    header Referrer-Policy no-referrer
+    reverse_proxy app:8080
+}
