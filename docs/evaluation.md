@@ -1,6 +1,6 @@
 # 评测方法、结果与局限
 
-结果记录于 2026-11-03。业务回归、真实供应商调用、回答质量和用户采用分别报告。健康检查、协议 fixture 或源码构建通过都不能代替真实模型质量证据。
+检索与业务历史结果记录于 2026-11-03，受限语义专项补充于 2026-11-08。业务回归、真实供应商调用、回答质量和用户采用分别报告。健康检查、协议 fixture 或源码构建通过都不能代替真实模型质量证据。
 
 ## 40 问三配置对照
 
@@ -37,7 +37,40 @@ python validation/product-portfolio-holdout/run.py verify --package validation/p
 
 真实执行前创建 real 实例，使用 `status` 输出的完整 JAR SHA-256，按 [执行器说明](../validation/product-portfolio-holdout/README.md) 发布和执行。会产生供应商用量；执行器不自动重试，也不自动改变 gold。每次执行保留独立本机原始记录。公开包不包含开发者本机账号、历史完整响应或私有资料。
 
+## 等待 extra 的受限语义分类（2026-11-08）
+
+该专项评估收集现场信息时的 `FACT / QUESTION / UNCLEAR` 分类，不测 RAG 检索或整段答案质量。固定集为自编、合成、公开的已见回归：36 题，三类各 12 题；另有 16 条门禁对照，不发送真实模型。功能源码见公开提交 [`476fbf3`](https://github.com/dashstar22/printer-after-sales-assistant/commit/476fbf305c7654b6838b6e35a3ff8f5ebe9738c0)。
+
+两轮分别调用 DashScope `qwen-plus` 36 次，单并发、零重试；temperature=0、max_tokens=128、严格 JSON Schema，单次完整请求体最多 4,096 字节、每轮总计 147,456 字节。协议、服务或预算失败即停。模型为别名，不可变快照记为 UNKNOWN。
+
+| 真实分类批次 | 有效协议 | 严格匹配 | 危险 FACT 提议 | 受控失败 / 跳过 |
+|---|---:|---:|---:|---:|
+| v1 首轮 | 36/36 | 26/36 | 4/24 | 0 / 0 |
+| v2 修复后的已见回归 | 36/36 | 34/36 | 0/24 | 0 / 0 |
+
+严格匹配以全部 36 题为分母。危险 FACT 指 gold 为 QUESTION 或 UNCLEAR、模型却返回有效 FACT，以该两类的 24 题为分母；这是提议风险，不是数据库实际误填率。v1 原始失败和冻结包保留，修复后另建 v2，没有覆盖原结果或改题。v2 达到本固定集至少 33/36 且危险 FACT 为 0/24 的预设门槛。
+
+v2 仍有 S25、S27 两题预期 UNCLEAR、实际 QUESTION，均为事实夹提问的表达。现有服务对两类都走不填值的澄清路径，因此未产生危险 FACT；严格分类偏差仍保留。v2 另冻结 12 条补充对照，未调用真实模型，也不并入 36 题分母。
+
+随后另用 6 次真实模型调用完成六个预定合成场景的 HTTP/MySQL 联调，业务结果 6 PASS、0 FAIL、0 SKIP。C06 同样保留 UNCLEAR→QUESTION 的严格分类偏差；业务通过依据是状态保持和澄清行为。该联调与上述两轮分类是三个独立授权批次；详见 [专项验证范围](verification.md#受限现场语义专项2026-11-08)。
+
+0/24 只表示本固定集未观察到危险提议，6 个业务场景通过也不证明未见语句准确率、线上零误填或生产验收。样本未经独立人工盲审；生产默认开关继续关闭。
+
+公开资产与离线入口：
+
+- [v1 固定题及原始规划](../validation/observation-semantics/README.md)、[共享评测适配器](../validation/observation-semantics/adapter/README.md)及 [E3 默认关闭的受控执行入口](../validation/observation-semantics/adapter/E3_README.md)。
+- [v2 修复回归包](../validation/observation-semantics-v2/README.md)包含当前源码指纹和 v1 历史快照；协议替身默认只访问本机回环地址，不使用数据库或真实模型。
+
+```sh
+python -X utf8 validation/observation-semantics-v2/verify.py
+python -X utf8 -m unittest discover -s validation/observation-semantics-v2 -p test_v2.py -v
+```
+
+使用当前代码时，直接运行旧 v1 verifier 会因源码已修复而发现历史指纹差异；用 v2 verifier 核对当前与历史。完整本机替身执行需要 Java 17、Maven 已缓存依赖及本地构建的应用 JAR，命令见 v2 说明。真实逐题 raw 和六场景私有运行器不分发，公开资产不等于能够直接重放开发者本机的全部真实联调。
+
 ## 业务与工程验证
+
+本节保留 2026-11-03 指定版本的历史记录，未因新增专项重记为当前完整回归。
 
 最终实现的 quick 回归为 380 项：344 PASS、0 FAIL、36 专用环境 SKIP。36 项分别属于 Phase5ApiTest 7、StoreDatabaseTest 6、Phase5CandidateCacheTest 11、ExternalCallBudgetTest 10、RedisProtectionTest 2。它们有独立集成通过证据：Phase5ApiTest 的 7 项按最终源码实跑，其他 29 项复用本次较早未变模块的验证，不声称全部用最终包重跑。完整隔离中间件合计 52 次执行通过，其中含继承场景重复执行，不能当作 52 个新增能力。
 

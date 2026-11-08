@@ -36,6 +36,36 @@ python -X utf8 scripts/portfolio_runtime.py start --instance my-real-demo --open
 
 默认日上限 120 次模型调用及 1,200,000 输入 UTF-8 字节；每轮 12 次/120,000 字节，知识任务 30 次/300,000 字节，并发 2。Chat、改写、Embedding、重排和重试共享持久预算。字节不是 token，未知供应商用量和账单不能记为零。私有配置支持样例列出的日上限等键，不支持任意绕过门禁。
 
+### 可选：等待现场补充信息时的受限语义
+
+`ASSISTANT_OBSERVATION_SEMANTICS_ENABLED` 默认是 `false`。真实 AI 模式也不会自动开启。启用后，只在已获收集授权、正在等待 `extra` 的合格轮次调用分类器；每次分类只尝试一次、零重试，仍受现有调用、字节和超时预算限制。真实调用会产生供应商用量。
+
+首次体验先用当前源码构建新包，再按上节流程新建独立的真实 AI 实例；将上节命令中所有 `my-real-demo` 统一替换为新的唯一实例名，例如 `my-observation-demo`。实例保存的是初始化时复制并绑定哈希的 JAR；重新构建 `backend/target` 不会自动更新已有实例。已有实例使用下文的升级流程，核对目标包与迁移后再启用。
+
+停止指定实例应用：
+
+```sh
+python -X utf8 scripts/portfolio_runtime.py stop --instance my-observation-demo
+```
+
+在该实例私有的 `.local-validation/portfolio/my-observation-demo/runtime.json` 中，向现有 `env` 对象增加下面这一项，保留其余配置：
+
+```json
+{
+  "ASSISTANT_OBSERVATION_SEMANTICS_ENABLED": "true"
+}
+```
+
+再启动同一实例：
+
+```sh
+python -X utf8 scripts/portfolio_runtime.py start --instance my-observation-demo --open
+```
+
+运行器会清理终端环境中的 `ASSISTANT_` 变量，`init --config` 的白名单也不接受这个开关；有效入口是上述实例私有 `env`。应用已经运行时，`start` 会直接返回，因此修改配置后必须明确停止、重新启动。关闭时将值改为字符串 `"false"`，同样停止、重新启动。
+
+该功能只帮助区分现场事实、提问和意图不明的表达；提问、分类失败或不明确时保持字段并澄清。它没有扩展其他字段，也不会替代用户确认或直接创建工单。行为边界见 [架构说明](architecture.md)，当前小规模验证及其限制见 [受限语义评测](evaluation.md#等待-extra-的受限语义分类2026-11-08)。
+
 ## 账号、邮件与日常启动
 
 ```sh
