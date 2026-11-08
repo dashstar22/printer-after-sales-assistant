@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "asset_version": "observation-semantics-fixed-v1",
+  "status": "ASSETS_ONLY_NO_REAL_MODEL_RUN",
+  "scope": "Only ObservationIntentInterpreter classification while eligible pending extra; no service writes",
+  "model": {
+    "provider": "DashScope OpenAI-compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "requested_model": "qwen-plus",
+    "immutable_snapshot": "UNKNOWN_ALIAS_ONLY",
+    "sdk": "LangChain4j",
+    "sdk_version": "1.22.0",
+    "temperature": 0.0,
+    "max_tokens": 128,
+    "timeout_ms": 5000,
+    "strict_json_schema": true,
+    "schema_name": "ObservationIntent",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "FACT",
+            "QUESTION",
+            "UNCLEAR"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "sdk_retries": 0,
+    "application_retries": 0,
+    "history_messages": 0,
+    "tools": [],
+    "embedding_calls": 0,
+    "rerank_calls": 0,
+    "credential_source": "Private process environment only after explicit authorization; never in assets"
+  },
+  "budget": {
+    "semantic_cases": 36,
+    "gate_cases": 16,
+    "max_attempts": 36,
+    "max_request_bytes": 4096,
+    "max_total_request_bytes": 147456,
+    "max_output_tokens": 128,
+    "max_configured_output_tokens_total": 4608,
+    "max_concurrency": 1,
+    "retries": 0,
+    "max_run_wall_seconds": 300,
+    "per_case_timeout_ms": 5000
+  },
+  "execution_order": {
+    "compatibility_sentinel_ids": [
+      "S01",
+      "S13",
+      "S25"
+    ],
+    "remaining": "All other semantic IDs in file order, each ID once; never gates",
+    "stop_on": [
+      "OBSERVATION_INVALID_RESPONSE",
+      "OBSERVATION_UNAVAILABLE",
+      "OBSERVATION_BUDGET_STOPPED",
+      "OBSERVATION_BUDGET_EXHAUSTED",
+      "OBSERVATION_DISABLED",
+      "OBSERVATION_CONFIG_INVALID",
+      "OBSERVATION_INPUT_INVALID"
+    ]
+  },
+  "acceptance_proposal": {
+    "dangerous_fact_count_max": 0,
+    "strict_match_min_count": 33,
+    "semantic_case_count": 36,
+    "controlled_failure_count_max": 0,
+    "skipped_count_max": 0,
+    "gate_reachability_mismatch_max": 0,
+    "production_enablement_authorized": false
+  },
+  "contexts": {
+    "await_extra": {
+      "state_present": true,
+      "phase": "COLLECTING",
+      "symptom": "打印异常",
+      "extra": null,
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "extra",
+      "target": "NONE",
+      "semantics_enabled": true,
+      "expires_offset_seconds": 600
+    },
+    "disabled": {
+      "state_present": true,
+      "phase": "COLLECTING",
+      "symptom": "打印异常",
+      "extra": null,
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "extra",
+      "target": "NONE",
+      "semantics_enabled": false,
+      "expires_offset_seconds": 600
+    },
+    "paused": {
+      "state_present": true,
+      "phase": "PAUSED",
+      "symptom": "打印异常",
+      "extra": null,
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "extra",
+      "target": "NONE",
+      "semantics_enabled": true,
+      "expires_offset_seconds": 600
+    },
+    "target_exists": {
+      "state_present": true,
+      "phase": "COLLECTING",
+      "symptom": "打印异常",
+      "extra": null,
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "extra",
+      "target": "ONE_OPEN",
+      "semantics_enabled": true,
+      "expires_offset_seconds": 600
+    },
+    "await_contact": {
+      "state_present": true,
+      "phase": "COLLECTING",
+      "symptom": "打印异常",
+      "extra": "已检查进纸口",
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "contact",
+      "target": "NONE",
+      "semantics_enabled": true,
+      "expires_offset_seconds": 600
+    },
+    "expired": {
+      "state_present": true,
+      "phase": "COLLECTING",
+      "symptom": "打印异常",
+      "extra": null,
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "extra",
+      "target": "NONE",
+      "semantics_enabled": true,
+      "expires_offset_seconds": 0
+    },
+    "no_state": {
+      "state_present": false,
+      "phase": "COLLECTING",
+      "symptom": "打印异常",
+      "extra": null,
+      "contact": null,
+      "contactMethod": null,
+      "pending_field": "extra",
+      "target": "NONE",
+      "semantics_enabled": true,
+      "expires_offset_seconds": 600
+    }
+  },
+  "planned_adapter": {
+    "status": "NOT_IMPLEMENTED",
+    "default_mode": "loopback_protocol_fixture",
+    "real_forwarding_default": false,
+    "listen_host": "127.0.0.1",
+    "listen_port": "ephemeral",
+    "upstream_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "allowed_upstream_host": "dashscope.aliyuncs.com",
+    "forward_body_unchanged": true,
+    "follow_redirects": false,
+    "budget_basis": "actual_serialized_HTTP_JSON_body_UTF8",
+    "production_accounting_bytes": "ChatRequest.toString_UTF8_separately_recorded",
+    "production_key": "loopback_placeholder_only",
+    "upstream_key": "private_process_environment_only"
+  }
+}

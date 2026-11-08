@@ -69,6 +69,8 @@ public class AssistantConversationService {
     private final AssistantExecution execution;
     @org.springframework.beans.factory.annotation.Value("${app.assistant.observation-evidence-dir:}")
     private String observationEvidenceDir="";
+    @org.springframework.beans.factory.annotation.Value("${ASSISTANT_OBSERVATION_SEMANTICS_ENABLED:false}")
+    private boolean observationSemantics;
 
     public AssistantConversationService(ConversationMapper mapper, ConversationService conversations, OrderService orders,
             DraftService drafts, KnowledgeRetrievalService retrieval, DependencyProperties config, PlatformTransactionManager tm,
@@ -78,7 +80,8 @@ public class AssistantConversationService {
     }
     public boolean enabled() { return config.ai().enabled(); }
 
-    private record Claim(boolean replayed, List<ConversationMapper.Message> history, Target baseline, long order,DialogueRouter.Decision decision) {}
+    private record Claim(boolean replayed, List<ConversationMapper.Message> history, Target baseline, long order,
+                         DialogueRouter.Decision decision,ConversationMapper.Message user) {}
     private record Target(String state, DraftResponse draft) {}
     private Target target(String id,long customer,long order) {
         var associations=mapper.draftAssociations(id,customer);
@@ -264,7 +267,7 @@ public class AssistantConversationService {
             var existing=mapper.turn(id,customerId,turnId);
             if(!existing.isEmpty()) {
                 if(existing.size()!=2 || !existing.get(0).content().equals(content)) throw new ConversationService.Conflict();
-                return new Claim(true,List.of(),null,conversation.orderId(),null);
+                return new Claim(true,List.of(),null,conversation.orderId(),null,null);
             }
             var pending=reply("RESULT_UNKNOWN","消息已保存，助手结果待确认；请读取原咨询，勿更换turnId重复发送。",List.of(),null);
             require(mapper.insertMessage(id,customerId,turnId,"USER",content,null));
@@ -274,42 +277,61 @@ public class AssistantConversationService {
             while(history.size()>1 && history.stream().mapToInt(m->m.content().length()).sum()>20000)history.remove(0);
             var baseline=target(id,customerId,conversation.orderId());
             var previous=mapper.dialogueState(id,customerId,conversation.orderId());
-            var decision=DialogueRouter.route(id,customerId,conversation.orderId(),turnId,content,previous,baseline.state(),user.createdAt());
+            var decision=DialogueRouter.route(id,customerId,conversation.orderId(),turnId,content,previous,baseline.state(),user.createdAt(),observationSemantics);
             if(decision.state()!=null&&!decision.state().equals(previous)){
                 if(previous==null)require(mapper.insertDialogueState(decision.state()));
                 else require(mapper.updateDialogueState(decision.state(),previous.revision()));
             }
-            return new Claim(false,List.copyOf(history),baseline,conversation.orderId(),decision);
+            return new Claim(false,List.copyOf(history),baseline,conversation.orderId(),decision,user);
         });
         if(claim.replayed())return conversations.savedTurn(customerId,id,turnId,true);
         long orderId=claim.order();
         var budget=execution.begin();
+        var decision=claim.decision();
         // Production collection uses the persisted state, never previous assistant wording.
         var literalHistory=claim.history().stream().filter(m->"USER".equals(m.role())).toList();
         var state=new BoundTools(customerId,orderId,id,turnId,literalHistory,budget,claim.baseline(),content);
         state.query=KnowledgeQueryCompletion.resolve(content,claim.history());
-        state.managedDialogue=true;state.managedState=claim.decision().state();
+        state.managedDialogue=true;state.managedState=decision.state();
         state.carriedMissing.clear();state.observationPrompt=List.of();
         boolean editing=trustedEdit(claim.baseline().state(),content);
         boolean knowledgeQuestion=!editing && (ServiceDialoguePolicy.requiresKnowledge(content)||state.query.query()!=null);
         var diagnostic=new EditDiagnosticEvidence(editing?observationEvidenceDir:"",turnId);
         String status="MODEL_UNAVAILABLE",text="助手暂时不可用，消息已保存；可继续使用普通报修入口。";
         String route="NOT_OBSERVED";
-        var guidance=claim.decision().answer();
-        String replyMode="MODEL".equals(claim.decision().layer())?"MODEL_API":"SERVICE_GUIDANCE";
+        var guidance=decision.answer();
+        String replyMode="MODEL".equals(decision.layer())?"MODEL_API":"SERVICE_GUIDANCE";
+        String semanticKind="NOT_REQUESTED",semanticReason="NOT_REQUESTED";
         try {
+            if(decision.semantic()){
+                // Reference resolution is authoritative and cannot become a field-value source.
+                if(state.query.clarification()||state.query.query()!=null){
+                    semanticReason="OBSERVATION_REFERENCE_REJECTED";
+                    decision=observationClarification(decision.state(),semanticReason);
+                }else{
+                    var proposal=ObservationIntentInterpreter.interpret(config.ai(),claim.user().content(),budget);
+                    semanticKind=proposal.kind().name();semanticReason=proposal.reason();
+                    if(proposal.kind()==ObservationIntentInterpreter.Kind.FACT){
+                        budget.check();decision=applyObservation(customerId,id,turnId,claim,budget);
+                    }else decision=observationClarification(decision.state(),proposal.reason());
+                }
+                // Both branch control and the later draft guard must use the committed state.
+                state.managedState=decision.state();guidance=decision.answer();
+                if(guidance!=null&&"WRITE_RESULT_UNKNOWN".equals(guidance.status()))state.writeFailure="WRITE_RESULT_UNKNOWN";
+            }
             if(state.query.clarification()){
                 status="NEEDS_INPUT";text="请说明具体指哪一个问题或操作，并确认当前设备；我会保留已有报修信息。也可以通过普通报修入口继续。";route="QUERY_CLARIFICATION";
             }else if(guidance!=null){
                 status=guidance.status();text=guidance.text();route="LOCAL_SERVICE_GUIDANCE";
-            }else if(claim.decision().topic()!=null){
-                var result=budget.call("TOOL",()->retrieval.ruleOwnedForAssistant(customerId,orderId,claim.decision().topic()));
+            }else if(decision.topic()!=null){
+                var topic=decision.topic();
+                var result=budget.call("TOOL",()->retrieval.ruleOwnedForAssistant(customerId,orderId,topic));
                 state.retrievalStatus=result.status();state.evidence=List.copyOf(result.sources());state.retrievalTrace=result.trace();
                 var checked="HIT".equals(result.status())?state.validatedAnswer(
                     JSON.writeValueAsString(Map.of("kind","KNOWLEDGE","pointIds",result.sources().stream().map(KnowledgeRetrievalService.Source::pointId).toList())),result.sources()):state.retrievalFailure();
                 status=checked.status();text=checked.text();state.sources=checked.citations();state.points=checked.points();route=result.reason();
-            }else if(claim.decision().prepare()){
-                var values=claim.decision().state().values();budget.tool();
+            }else if(decision.prepare()){
+                var values=decision.state().values();budget.tool();
                 var args=new LinkedHashMap<String,String>();for(int i=0;i<4;i++)args.put(FIELDS.get(i),values.get(i));
                 state.execute(ToolExecutionRequest.builder().id("state-prepare").name("prepareRepairDraft").arguments(JSON.writeValueAsString(args)).build());
                 var checked=state.finish("{\"kind\":\"WORKFLOW\"}");status=checked.status();text=checked.text();route="STATE_PREPARATION";
@@ -366,8 +388,8 @@ public class AssistantConversationService {
         } catch(RuntimeException failure) {
             route="MODEL_OR_PROTOCOL_FAILED";
             // Never serialize provider exceptions, HTTP headers, prompts, tool arguments or business payloads.
-            status=claim.decision().topic()!=null?"RETRIEVAL_UNAVAILABLE":"MODEL_UNAVAILABLE";
-            text=claim.decision().topic()!=null?EvidenceAnswerPolicy.unavailable().text():"助手暂时不可用，消息及已准备的草稿已保存；请读取咨询或使用普通报修入口。";
+            status=decision.topic()!=null?"RETRIEVAL_UNAVAILABLE":"MODEL_UNAVAILABLE";
+            text=decision.topic()!=null?EvidenceAnswerPolicy.unavailable().text():"助手暂时不可用，消息及已准备的草稿已保存；请读取咨询或使用普通报修入口。";
         }
         // Empty/failed/unauthorized retrieval remains distinguishable even if a later model call fails.
         var retrievalFailure=state.retrievalFailure();
@@ -393,7 +415,8 @@ public class AssistantConversationService {
         });persisted=true;}
         finally {diagnostic.outcome(route,finalStatus,persisted,checkpointDraft.get(),budget.modelCalls(),budget.toolCalls());}
         var trace=new LinkedHashMap<String,Object>();trace.put("conversationId",id);trace.put("turnId",turnId);
-        trace.put("routeLayer",claim.decision().layer());trace.put("intent",claim.decision().intent());trace.put("routeReason",claim.decision().reason());trace.put("executionResult",route);
+        trace.put("routeLayer",decision.layer());trace.put("intent",decision.intent());trace.put("routeReason",decision.reason());trace.put("executionResult",route);
+        if(claim.decision().semantic()){trace.put("semanticKind",semanticKind);trace.put("semanticReason",semanticReason);}
         trace.put("mode",replyMode);trace.put("status",status);trace.put("modelCalls",budget.modelCalls());trace.put("toolCalls",budget.toolCalls());trace.put("tools",state.trace);
         trace.put("retrieval",state.retrievalTrace);
         if(state.answerValidation!=null)trace.put("answerValidation",state.answerValidation.name());
@@ -406,6 +429,50 @@ public class AssistantConversationService {
             state.observationDecision,!state.trace.isEmpty(),state.retrievalStatus!=null,
             state.draft!=null || state.writeFailure!=null || savedReply.draft()!=null || savedReply.operation()!=null,savedReply.status());
         return saved;
+    }
+    private static DialogueRouter.Decision observationClarification(DialogueState state,String reason){
+        return new DialogueRouter.Decision("MODEL","COLLECT_FIELDS",reason,state,
+            new EvidenceAnswerPolicy.Answer("NEEDS_INPUT","本轮没有填入现场信息。请明确描述现场情况，或使用“现场：你的原话”补充；如果要咨询处理方法，请先回复“暂停填写”，再提问。",List.of()),false,null);
+    }
+    private DialogueRouter.Decision applyObservation(long customer,String id,String turn,Claim claim,AssistantExecution.Budget budget){
+        var snapshot=claim.decision().state();
+        var transaction=new TransactionTemplate(write.getTransactionManager());transaction.setTimeout(2);
+        try{
+            return transaction.execute(tx->{
+                budget.check();
+                var owned=mapper.lockOwned(id,customer);
+                budget.check();
+                if(owned==null||owned.orderId()!=claim.order())return observationClarification(snapshot,"OBSERVATION_OWNERSHIP_CHANGED");
+                orders.detail(customer,claim.order());
+                var latest=mapper.latestUser(id,customer);
+                var actual=mapper.dialogueState(id,customer,claim.order());
+                if(latest==null||latest.id()!=claim.user().id()||!turn.equals(latest.turnId())||!claim.user().content().equals(latest.content())
+                    ||actual==null||!actual.equals(snapshot)||!"COLLECTING".equals(actual.phase())
+                    ||!"extra".equals(actual.pendingField())||actual.extra()!=null&&!actual.extra().isBlank())
+                    return observationClarification(actual,"OBSERVATION_SNAPSHOT_CHANGED");
+                if(!"NONE".equals(target(id,customer,claim.order()).state()))return observationClarification(actual,"OBSERVATION_TARGET_CHANGED");
+                if(!actual.active(mapper.dialogueNow()))return observationClarification(actual,"OBSERVATION_AUTHORIZATION_EXPIRED");
+                var values=new ArrayList<>(actual.values());values.set(1,normalized(latest.content()));
+                var next=actual.next("COLLECTING",values,turn);
+                budget.check();
+                require(mapper.updateDialogueState(next,actual.revision()));
+                budget.check();
+                if(next.missing().isEmpty())return new DialogueRouter.Decision("MODEL","PREPARE_REPAIR","OBSERVATION_FACT_APPLIED",next,null,true,null);
+                String prompt=missingPrompt(List.of(next.pendingField()));
+                // A collection acknowledgement and its literal state are one checkpoint.
+                var checkpoint=new ConversationResponse.Reply("MODEL_API","NEEDS_INPUT",prompt,List.of(),null,null);
+                require(mapper.complete(id,customer,turn,prompt,JSON.writeValueAsString(checkpoint)));
+                budget.check();
+                return new DialogueRouter.Decision("MODEL","COLLECT_FIELDS","OBSERVATION_FACT_APPLIED",next,
+                    new EvidenceAnswerPolicy.Answer("NEEDS_INPUT",prompt,List.of()),false,null);
+            });
+        }catch(ConversationService.Conflict|OrderService.NotFound|org.springframework.dao.DataIntegrityViolationException|org.springframework.dao.ConcurrencyFailureException failure){
+            return observationClarification(snapshot,"OBSERVATION_APPLY_REJECTED");
+        }catch(org.springframework.dao.DataAccessException|org.springframework.transaction.TransactionException failure){
+            if(knownRollback(failure))return observationClarification(snapshot,"OBSERVATION_APPLY_REJECTED");
+            return new DialogueRouter.Decision("MODEL","COLLECT_FIELDS","OBSERVATION_APPLY_UNKNOWN",snapshot,
+                new EvidenceAnswerPolicy.Answer("WRITE_RESULT_UNKNOWN","现场信息操作结果待确认；请读取原咨询并沿用原turnId查回，勿更换标识重复发送。",List.of()),false,null);
+        }
     }
     private ChatModel model(Duration timeout) {
         var ai=config.ai();URI base=ai.baseUrl();String host=base==null?null:base.getHost();

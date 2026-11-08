@@ -33,6 +33,28 @@ class AssistantExecutionTest {
         env.withProperty("ASSISTANT_READ_RETRIES","0");var budget=execution.begin();var attempts=new AtomicInteger();
         assertThrows(HttpException.class,()->budget.model(()->{attempts.incrementAndGet();throw new HttpException(503,"redacted");}));assertEquals(1,attempts.get());
     }
+    @Test void modelOnceDoesNotUseDefaultTransientReadRetry(){
+        var budget=execution.begin();var attempts=new AtomicInteger();
+        assertThrows(HttpException.class,()->budget.modelOnce(()->{attempts.incrementAndGet();throw new HttpException(503,"redacted");}));
+        assertEquals(1,attempts.get());assertEquals(1,budget.modelCalls());assertEquals(0,budget.toolCalls());
+        assertNull(budget.stoppedCode());
+    }
+    @Test void modelOnceSharesAttemptCapWithOrdinaryModelCalls(){
+        env.withProperty("ASSISTANT_MAX_MODEL_CALLS","2");var budget=execution.begin();var attempts=new AtomicInteger();
+        assertEquals("first",budget.modelOnce(()->{attempts.incrementAndGet();return "first";}));
+        assertEquals("second",budget.model(()->{attempts.incrementAndGet();return "second";}));
+        assertEquals("MODEL_CALL_LIMIT",assertThrows(AssistantExecution.Stopped.class,
+            ()->budget.modelOnce(()->{attempts.incrementAndGet();return "unexpected";})).code());
+        assertEquals(2,attempts.get());assertEquals(2,budget.modelCalls());
+    }
+    @Test void modelOnceTimeoutStopsLaterWorkWithoutRetry()throws Exception{
+        env.withProperty("ASSISTANT_REQUEST_TIMEOUT_MS","80");var budget=execution.begin();var attempts=new AtomicInteger();var done=new CountDownLatch(1);
+        assertEquals("MODEL_TIMEOUT",assertThrows(AssistantExecution.Stopped.class,()->budget.modelOnce(()->{
+            attempts.incrementAndGet();try{new CountDownLatch(1).await();return "late";}finally{done.countDown();}
+        })).code());
+        assertTrue(done.await(1,TimeUnit.SECONDS));assertEquals(1,attempts.get());assertEquals(1,budget.modelCalls());
+        assertThrows(AssistantExecution.Stopped.class,()->budget.modelOnce(()->"unexpected"));assertNull(AssistantExecution.current());
+    }
     @Test void toolLimitIsCheckedBeforeAnotherInvocation(){
         env.withProperty("ASSISTANT_MAX_TOOL_CALLS","2");var budget=execution.begin();budget.tool();budget.tool();
         assertEquals("TOOL_CALL_LIMIT",assertThrows(AssistantExecution.Stopped.class,budget::tool).code());assertEquals(2,budget.toolCalls());

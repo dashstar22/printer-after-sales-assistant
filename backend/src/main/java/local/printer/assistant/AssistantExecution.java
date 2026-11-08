@@ -79,6 +79,20 @@ public final class AssistantExecution {
                 }
             }
         }
+        /** A bounded semantic proposal gets one attempt even when ordinary reads allow a retry. */
+        public <T>T modelOnce(Callable<T> work){
+            check();if(modelCalls>=limits.modelCalls())throw stop("MODEL_CALL_LIMIT");modelCalls++;
+            long started=AssistantAudit.clock();
+            try{var response=call("MODEL",work);AssistantAudit.model(response,null,started);return response;}
+            catch(RuntimeException failure){
+                AssistantAudit.model(null,failure,started);
+                if(stopped.get()!=null)throw stopped.get();
+                for(Throwable cause=failure;cause!=null;cause=cause.getCause())
+                    if(cause instanceof dev.langchain4j.exception.TimeoutException||cause instanceof java.net.http.HttpTimeoutException)
+                        throw stop(deadline-System.nanoTime()<=0?"TURN_TIMEOUT":"MODEL_TIMEOUT");
+                throw failure;
+            }
+        }
         public <T>T call(String kind,Callable<T> work){
             check();long wait=Math.min(TimeUnit.MILLISECONDS.toNanos(limits.requestMs()),deadline-System.nanoTime());
             var scope=new Scope(this,System.nanoTime()+wait,kind);Future<T> future;

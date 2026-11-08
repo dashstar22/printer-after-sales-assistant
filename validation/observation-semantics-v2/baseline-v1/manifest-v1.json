@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "asset_version": "observation-semantics-fixed-v1",
+  "status": "FROZEN_ASSETS_NOT_MODEL_RESULTS",
+  "prepared_at": "2026-11-08T02:49:22.805288+00:00",
+  "git_head_for_context_only": "e04636dac85bbe142d31547c51535354d39d040b",
+  "worktree_note": "Source hashes describe the current dirty workspace; HEAD alone does not identify this implementation. Existing edits were preserved.",
+  "label_origin": "AI-assisted public self-authored seen regression cases; not an independent human blind holdout",
+  "asset_files": {
+    "README.md": "03ab8676660cbac13f0669688e2a24e03b9f43000e50ebde75ef566acd130665",
+    "PREPARATION.md": "08694cccd465222b0dca29df36d324fa78819aa906316ae6d40b39c515215a82",
+    "cases.jsonl": "636f4cd1adfa9ebd7ea7f26a266411e213aeba11981a5a4d4015acd7175431eb",
+    "gold.jsonl": "47ebca687adf38a4de6b6e8ca41b61da0566920c339d765d9096ea86294461c9",
+    "config.json": "884d6cca08e4bc548e4aada8e7d1af9f85a203a7ec73bf3b7dbb2165dfddc8c0",
+    "GateProbe.java": "19b83f6910e1b7e06fd17289c3b9916ee65c835d36dace5ab986ef80c27dd51d",
+    "verify.py": "2e98cdc7627f45ca9a9d11c6ed5c7f53879926618b2c6073f543e9a1d39524e5",
+    "score.py": "cefa933df2528b33ad94c8c8ace651781089e6817b17b5516333fd9fab7acaa4",
+    "test_score.py": "1e43be97b86543f1ac2179a674b5fd2145b9acd4b002baea55769b1695a892c0"
+  },
+  "source_files": {
+    "backend/src/main/java/local/printer/assistant/ObservationIntentInterpreter.java": "ee87b8fc511ec4130833324a35c0211559ee9fc7b2014540b40864fb348c1097",
+    "backend/src/main/java/local/printer/assistant/DialogueRouter.java": "570a1c9e70579365cea14f51c0c2eefe985332a38146bcf5afd4290f6216d963",
+    "backend/src/main/java/local/printer/assistant/DialogueState.java": "e9118fe3625ee18e40e688f1797c5a27831975e3c1d9d0a96692c12d1d1c0ea5",
+    "backend/src/main/java/local/printer/assistant/KnowledgeQueryCompletion.java": "edca9b3c3eca72dca8b30165103b50e64d0b1b853b98c312bbbd478a6be0dada",
+    "backend/src/main/java/local/printer/assistant/KnowledgeQueryBinding.java": "1bd51580f9da0cfcf7358a453b6d3b87002f7b249f12097c8ac73dfaad8347d9",
+    "backend/src/main/java/local/printer/assistant/AssistantConversationService.java": "43529ef3f54ab33b9d3324dcf9fd30986d29c81f3eb73cd8dbf643131f3bfb17",
+    "backend/src/main/java/local/printer/assistant/AssistantExecution.java": "9669a27fee92fe353537bdbb25c44b137d90dd1db8a9806e0a58cfb4158d9868",
+    "backend/src/main/java/local/printer/assistant/DeviceObservationPolicy.java": "5ef3b3d6a16176da9c6346a4335c393a2262d00c56549165f52bbdf522088a09",
+    "backend/src/main/java/local/printer/assistant/ServiceDialoguePolicy.java": "b136debe54a3df8499765500a25b9e4de96076990a06af88d3903d7f609436f0",
+    "backend/src/main/java/local/printer/assistant/EvidenceAnswerPolicy.java": "23d7cfd168959cf7ef65d13be45659089e7161e9bae74b2bc455fcabd657ca2d",
+    "backend/src/main/java/local/printer/knowledge/RuleTopicCatalog.java": "328a2954df1d5a1bf2928cd7577a4dcce54d2438a1dd66c39c2b3b76b9f7bff8",
+    "backend/src/main/java/local/printer/operations/ExternalCallBudget.java": "f0afc1a80ef28ae30c9b10ac14f6a6c888fbdd8be20c7d5aba6087a3cfffe222",
+    "backend/src/main/java/local/printer/config/DependencyProperties.java": "4d7aa2b4b9d8ffa54eb328c3bef7779082b8cd6946a4e21e958bd544560f2e47",
+    "backend/pom.xml": "17af1d82169576b748df67a9bcc1d84cfdebf54c4d0c6c34cfd85c09557adaf9"
+  },
+  "semantic_count": 36,
+  "gate_count": 16,
+  "real_model_calls_in_preparation": 0
+}

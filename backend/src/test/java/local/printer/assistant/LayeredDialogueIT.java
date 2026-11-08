@@ -20,7 +20,7 @@ import tools.jackson.databind.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Real HTTP, Security, MySQL and state transactions. Model is an explicit loopback protocol fixture. */
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"AI_ENABLED=true","ASSISTANT_READ_RETRIES=0","QDRANT_URL=http://127.0.0.1:9"})
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"AI_ENABLED=true","ASSISTANT_READ_RETRIES=0","QDRANT_URL=http://127.0.0.1:9","ASSISTANT_OBSERVATION_SEMANTICS_ENABLED=false","server.address=127.0.0.1"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LayeredDialogueIT {
     static final ObjectMapper JSON=new ObjectMapper();
@@ -28,6 +28,10 @@ class LayeredDialogueIT {
     static final List<JsonNode> requests=new CopyOnWriteArrayList<>();
     static HttpServer model;
     @DynamicPropertySource static void model(DynamicPropertyRegistry registry)throws Exception{
+        String database=System.getenv("DB_URL");
+        assertTrue(database!=null&&database.matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/printer_dialogue_it_[A-Za-z0-9_]+\\?[^#]*"),
+            "An explicit loopback printer_dialogue_it_ database is required before Spring migration");
+        registry.add("spring.datasource.url",()->database);
         model=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         model.createContext("/v1/chat/completions",exchange->{
             requests.add(JSON.readTree(exchange.getRequestBody().readAllBytes()));var next=replies.poll();
@@ -44,12 +48,14 @@ class LayeredDialogueIT {
     @Autowired DemoSeedService seed;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean ConversationMapper mapper;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean local.printer.knowledge.KnowledgeRetrievalService retrieval;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean local.printer.ticket.DraftService draftService;
     long a,b,order,otherOrder;
     final SeedPasswords passwords=new SeedPasswords(UUID.randomUUID().toString(),UUID.randomUUID().toString(),UUID.randomUUID().toString());
     @BeforeAll void seed(){
         assertTrue(jdbc.queryForObject("SELECT DATABASE()",String.class).startsWith("printer_dialogue_it_"));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM users",Integer.class));seed.seed(passwords);
         a=jdbc.queryForObject("SELECT id FROM users WHERE username='demo_customer_a'",Long.class);b=jdbc.queryForObject("SELECT id FROM users WHERE username='demo_customer_b'",Long.class);
+        assertEquals(2,jdbc.update("UPDATE users SET email=CONCAT(username,'@example.invalid'),display_email=CONCAT(username,'@example.invalid'),email_verified_at=CURRENT_TIMESTAMP(6) WHERE id IN (?,?)",a,b));
         order=jdbc.queryForObject("SELECT id FROM orders WHERE customer_id=?",Long.class,a);
         jdbc.update("INSERT INTO orders(order_no,customer_id,model_id,serial_no,purchase_date,is_demo) SELECT 'LAYER-SECOND',customer_id,model_id,'LAYER-SECOND-SERIAL',purchase_date,true FROM orders WHERE id=?",order);
         otherOrder=jdbc.queryForObject("SELECT id FROM orders WHERE order_no='LAYER-SECOND'",Long.class);
@@ -65,7 +71,7 @@ class LayeredDialogueIT {
         }
         void login(boolean other)throws Exception{
             token=JSON.readTree(request("GET","/api/auth/csrf",null).body()).path("token").asString();
-            assertEquals(200,request("POST","/api/auth/login","username="+(other?"demo_customer_b":"demo_customer_a")+"&password="+URLEncoder.encode(other?passwords.customerB():passwords.customerA(),StandardCharsets.UTF_8)).statusCode());
+            assertEquals(200,request("POST","/api/auth/login","username="+URLEncoder.encode((other?"demo_customer_b":"demo_customer_a")+"@example.invalid",StandardCharsets.UTF_8)+"&password="+URLEncoder.encode(other?passwords.customerB():passwords.customerA(),StandardCharsets.UTF_8)).statusCode());
             token=JSON.readTree(request("GET","/api/auth/csrf",null).body()).path("token").asString();
         }
     }
@@ -76,10 +82,15 @@ class LayeredDialogueIT {
     JsonNode send(Browser browser,String id,String text)throws Exception{return send(browser,id,UUID.randomUUID().toString(),text,201).path("assistantMessage").path("response");}
     DialogueState state(String id){return mapper.dialogueState(id,a,order);}
     long drafts(){return jdbc.queryForObject("SELECT COUNT(*) FROM repair_drafts",Long.class);}
+    void clearWorkInvocations(){requests.clear();org.mockito.Mockito.clearInvocations(retrieval,draftService);}
+    void noLookupOrDraftWrite(long before){
+        assertEquals(0,requests.size());assertEquals(before,drafts());
+        org.mockito.Mockito.verifyNoInteractions(retrieval,draftService);
+    }
     void response(String text){replies.add(Map.of("role","assistant","content",text));}
     void call(String name,Object args){replies.add(Map.of("role","assistant","tool_calls",List.of(Map.of("id","fixture-"+UUID.randomUUID(),"type","function","function",Map.of("name",name,"arguments",JSON.writeValueAsString(args))))));}
     @Test void migrationsAreAdditiveAndNewConversationsHaveNoState()throws Exception{
-        assertEquals(List.of("1","2","3","4","5","6","7","8","9","10"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
+        assertEquals(List.of("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15"),jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank",String.class));
         var browser=browser();String id=create(browser,order);assertNull(state(id));assertEquals(0,requests.size());
     }
     @Test void pureGreetingHasZeroChatWhileUnknownUsesExistingToolLoop()throws Exception{
@@ -90,8 +101,12 @@ class LayeredDialogueIT {
     }
     @Test void mixedGreetingAndRuleQuestionPausesWithoutFillingField()throws Exception{
         var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");var original=state(id);
+        long before=drafts();clearWorkInvocations();
         assertEquals("RETRIEVAL_UNAVAILABLE",send(browser,id,"你好，报修要准备什么").path("status").asString());
         assertEquals("PAUSED",state(id).phase());assertEquals(original.symptom(),state(id).symptom());assertEquals(original.expiresAt(),state(id).expiresAt());assertNull(state(id).extra());assertEquals(0,requests.size());
+        org.mockito.Mockito.verify(retrieval).ruleOwnedForAssistant(a,order,local.printer.knowledge.RuleTopicCatalog.Topic.REQUIRED_FIELDS);
+        org.mockito.Mockito.verify(retrieval,org.mockito.Mockito.never()).searchOwnedForAssistant(org.mockito.ArgumentMatchers.anyLong(),org.mockito.ArgumentMatchers.anyLong(),org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.verifyNoInteractions(draftService);assertEquals(before,drafts());
         send(browser,id,"继续填写报修");assertEquals("extra",state(id).pendingField());
     }
     @Test void mixedHistoryCannotBecomeSyntheticAssistantInstructions()throws Exception{
@@ -140,16 +155,80 @@ class LayeredDialogueIT {
         assertEquals("进纸处卡住，屏幕没有错误码。已检查纸盘。",reply.path("draft").path("extra").asString());
         assertEquals("PREPARED",state(id).phase());assertEquals(before+1,drafts());assertEquals(tickets,jdbc.queryForObject("SELECT COUNT(*) FROM tickets",Long.class));
         var replay=send(browser,id,turn,"电话13800000000",200);assertTrue(replay.path("replayed").asBoolean());assertEquals(completed.path("assistantMessage"),replay.path("assistantMessage"));assertEquals(before+1,drafts());assertEquals(0,requests.size());
+        assertEquals(409,browser.request("POST","/api/conversations/"+id+"/messages",Map.of("turnId",turn,"content","站内联系")).statusCode());
+        assertEquals(before+1,drafts());assertEquals("PREPARED",state(id).phase());
     }
     @Test void labeledFieldsCanPrepareWithPunctuation()throws Exception{
         var browser=browser();String id=create(browser,order);
         var reply=send(browser,id,"故障描述：反复卡纸；现场补充信息：屏幕无提示，已检查。；联系人：小王；联系方式：站内联系。请准备草稿。");
         assertEquals("DRAFT_PREPARED",reply.path("status").asString());assertEquals(0,requests.size());
     }
-    @ParameterizedTest @ValueSource(strings={"你帮我猜","小王，然后提交","联系人：小王；联系人：小李","不要填了"})
+    @ParameterizedTest @ValueSource(strings={"你帮我猜","小王，然后提交","联系人：小王；联系人：小李","不要填了",
+        "打印时没有什么异常声音","字段校验错误","字段 INVALID_ARGUMENT","打印机卡纸该怎么处理","那具体怎么操作",
+        "现场：屏幕正常；联系人：小王，然后提交","现场：屏幕正常；立刻建单","现场：屏幕正常；；联系人：小王",
+        "现场：屏幕正常\n已检查纸盘","现场：屏幕正常；未知字段：小王","故障：卡纸；故障描述：进纸卡住"})
     void ambiguousRepliesNeverFillOrWrite(String value)throws Exception{
-        var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");long before=drafts();
-        assertEquals("NEEDS_INPUT",send(browser,id,value).path("status").asString());assertNull(state(id).extra());assertEquals(before,drafts());assertEquals(0,requests.size());
+        var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");long before=drafts();var original=state(id);clearWorkInvocations();
+        assertEquals("NEEDS_INPUT",send(browser,id,value).path("status").asString());assertEquals(original,state(id));noLookupOrDraftWrite(before);
+    }
+    @ParameterizedTest @ValueSource(strings={"现场补充信息：屏幕显示字段校验错误","现场：屏幕正常，已检查。；  ","现场：屏幕正常\n联系人：小王\n"})
+    void validLabelsWinBeforeBroadTopicsAndApplyAllFields(String value)throws Exception{
+        var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");var original=state(id);long before=drafts();clearWorkInvocations();
+        assertEquals("NEEDS_INPUT",send(browser,id,value).path("status").asString());var current=state(id);
+        assertEquals("COLLECTING",current.phase());assertEquals(original.expiresAt(),current.expiresAt());assertEquals(original.authorizedTurn(),current.authorizedTurn());
+        assertNotNull(current.extra());assertEquals(original.symptom(),current.symptom());
+        if(value.contains("字段校验错误"))assertEquals("屏幕显示字段校验错误",current.extra());
+        if(value.contains("联系人：小王"))assertEquals("小王",current.contact());
+        noLookupOrDraftWrite(before);
+    }
+    @ParameterizedTest @ValueSource(strings={"联系人：小王；联系人：小李，请准备报修","现场：屏幕正常；立刻建单，请准备报修","故障：卡纸；故障描述：进纸卡住；请准备报修"})
+    void invalidInitialLabelsNeverFallBackToSymptom(String value)throws Exception{
+        var browser=browser();String id=create(browser,order);long before=drafts();clearWorkInvocations();
+        assertEquals("NEEDS_INPUT",send(browser,id,value).path("status").asString());assertNull(state(id));noLookupOrDraftWrite(before);
+    }
+    @ParameterizedTest @ValueSource(strings={"联系人：无","联系人：没有","联系人：不提供","联系方式：无","联系方式：没有","联系方式：不提供"})
+    void labeledAndUnlabeledContactRefusalsUseSameGuard(String value)throws Exception{
+        var browser=browser();String id=create(browser,order);long before=drafts();clearWorkInvocations();
+        assertEquals("NEEDS_INPUT",send(browser,id,value+"；请准备报修").path("status").asString());assertNull(state(id));noLookupOrDraftWrite(before);
+        send(browser,id,"反复卡纸，请准备报修");send(browser,id,"屏幕正常");
+        if(value.startsWith("联系方式"))send(browser,id,"小王");
+        var original=state(id);clearWorkInvocations();
+        for(String input:List.of(value,value.substring(value.indexOf('：')+1))){
+            assertEquals("NEEDS_INPUT",send(browser,id,input).path("status").asString());assertEquals(original,state(id));
+        }
+        noLookupOrDraftWrite(before);
+    }
+    @ParameterizedTest @ValueSource(strings={"123","明确的站内联系"})
+    void contactMethodRemainsFreeText(String value)throws Exception{
+        var browser=browser();String id=create(browser,order);send(browser,id,"故障：卡纸；现场：屏幕正常；联系人：小王；请准备报修");
+        var reply=send(browser,id,value);assertEquals("DRAFT_PREPARED",reply.path("status").asString());assertEquals(value,reply.path("draft").path("contactMethod").asString());assertEquals(0,requests.size());
+    }
+    @Test void barePreparationAtNinthMinutePreservesAuthorizationAndReplaysWithoutWrite()throws Exception{
+        var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");
+        // Advance the authorization's age inside this isolated test database without waiting nine minutes.
+        jdbc.update("UPDATE messages SET created_at=DATE_SUB(CURRENT_TIMESTAMP(6),INTERVAL 9 MINUTE) WHERE conversation_id=? AND turn_id=? AND role='USER'",id,state(id).authorizedTurn());
+        jdbc.update("UPDATE conversation_dialogue_states SET expires_at=DATE_ADD(CURRENT_TIMESTAMP(6),INTERVAL 1 MINUTE) WHERE conversation_id=?",id);
+        var original=state(id);String turn=UUID.randomUUID().toString();long before=drafts(),messages=mapper.count(id,a);clearWorkInvocations();
+        var repeated=send(browser,id,turn,"请准备报修",201);assertEquals("NEEDS_INPUT",repeated.path("assistantMessage").path("response").path("status").asString());
+        assertEquals(original,state(id));assertEquals(messages+2,mapper.count(id,a));
+        var replay=send(browser,id,turn,"请准备报修",200);assertTrue(replay.path("replayed").asBoolean());assertEquals(repeated.path("assistantMessage"),replay.path("assistantMessage"));
+        assertEquals(original,state(id));assertEquals(messages+2,mapper.count(id,a));noLookupOrDraftWrite(before);
+    }
+    @ParameterizedTest @ValueSource(strings={"现场：屏幕正常；请准备报修","出纸口卡住，请准备报修","故障：卡纸；现场：已检查；联系人：小王；联系方式：123；请准备报修"})
+    void repeatedPreparationWithNewContentNeverResetsOrMerges(String value)throws Exception{
+        var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");var original=state(id);long before=drafts();clearWorkInvocations();
+        assertEquals("NEEDS_INPUT",send(browser,id,value).path("status").asString());assertEquals(original,state(id));noLookupOrDraftWrite(before);
+    }
+    @Test void pausedPreparationAndFieldsStayPausedWhileReadOnlyQuestionsRemainAvailable()throws Exception{
+        var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");send(browser,id,"暂停填写");var paused=state(id);long before=drafts();clearWorkInvocations();
+        for(String value:List.of("小王","现场：屏幕正常","请准备报修")){
+            assertEquals("NEEDS_INPUT",send(browser,id,value).path("status").asString());assertEquals(paused,state(id));
+        }
+        noLookupOrDraftWrite(before);
+        call("searchKnowledge",Map.of("query","打印机卡纸该怎么处理"));response("{\"kind\":\"NO_EVIDENCE\"}");
+        assertEquals("RETRIEVAL_UNAVAILABLE",send(browser,id,"打印机卡纸该怎么处理").path("status").asString());
+        assertEquals("PAUSED",state(id).phase());assertEquals(paused.values(),state(id).values());assertEquals(paused.expiresAt(),state(id).expiresAt());assertEquals(before,drafts());assertEquals(2,requests.size());
+        org.mockito.Mockito.verify(retrieval).searchOwnedForAssistant(a,order,"打印机卡纸该怎么处理");org.mockito.Mockito.verifyNoInteractions(draftService);
     }
     @Test void pauseResumeExpiryAndCancelDoNotRenewOrDelete()throws Exception{
         var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");var expiry=state(id).expiresAt();
@@ -180,7 +259,10 @@ class LayeredDialogueIT {
         var browser=browser();String id=create(browser,order);long before=drafts();
         send(browser,id,"故障描述：卡纸；现场："+"字".repeat(2001)+"；联系人：小王；联系方式：123。请准备报修");
         assertEquals(before,drafts());assertEquals("COLLECTING",state(id).phase());
+        var failed=state(id);assertTrue(failed.missing().isEmpty());clearWorkInvocations();
+        assertEquals("NEEDS_INPUT",send(browser,id,"请准备报修").path("status").asString());assertEquals(failed,state(id));noLookupOrDraftWrite(before);
         var fixed=send(browser,id,"现场：已检查纸张");assertEquals("DRAFT_PREPARED",fixed.path("status").asString());assertEquals(before+1,drafts());
+        org.mockito.Mockito.verify(draftService).create(org.mockito.ArgumentMatchers.eq(a),org.mockito.ArgumentMatchers.any(local.printer.ticket.DraftService.Input.class));assertEquals(0,requests.size());
     }
     @Test void newerWindowCancellationPreventsOlderStateFromPreparing()throws Exception{
         var browser=browser();String id=create(browser,order);send(browser,id,"反复卡纸，请准备报修");send(browser,id,"屏幕无提示");send(browser,id,"小王");

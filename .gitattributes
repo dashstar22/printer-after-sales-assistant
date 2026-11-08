@@ -15,3 +15,8 @@ backend/src/main/resources/static/app/assets/** -text
 backend/src/main/resources/static/app/licenses/** -text
 backend/src/main/resources/static/app/vendor/*.js -text
 *.sh text eol=lf
+
+# Frozen observation evaluation hashes bind exact original bytes.
+validation/observation-semantics/** -text
+validation/observation-semantics-v2/** -text
+backend/pom.xml -text
