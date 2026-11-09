@@ -6,11 +6,15 @@
 
 登录身份来自服务端 Session。订单、咨询、草稿和附件读取执行服务端归属校验。对话规则先处理确定的业务动作，持久化对话状态管理报修收集，模型处理受限的自然语言与知识回答。服务端校验所有工具参数和当前用户身份。
 
-当前路由优先处理明确命令、认可标签和受限的结构化输入。宽泛词语匹配只提供粗信号，不能授予检索、字段写入或建单权限；收集期间不能确定的自由表达保持澄清，显式暂停、取消等动作继续由确定规则处理。
+当前路由由 `DialogueRouter.routeControlled()` 先处理明确固定表达与原有准备授权规则，再检查自由文本、标签字段和首次准备请求携带内容的用途。宽泛词语匹配只提供粗信号，标签本身也不能授予字段写入权限；显式暂停、继续和取消等动作保留确定路径。
 
-可选的现场语义分支默认关闭，仅在已授权且有效的收集状态、等待空的 `extra`、没有既有草稿或工单目标等条件满足时进入。`ObservationIntentInterpreter` 只提议 `FACT`、`QUESTION`、`UNCLEAR`，使用固定提示词、严格 JSON Schema 和一次零重试调用。`QUESTION`、`UNCLEAR` 及分类失败走澄清，不转通用工具或知识检索。
+`ASSISTANT_COLLECTION_SEMANTICS_ENABLED` 默认 `true`。`CollectionIntentInterpreter` 使用固定提示词、严格 JSON Schema 和一次零重试调用，只提议 `FIELD_VALUE`、`KNOWLEDGE_QUESTION`、`OUT_OF_SCOPE`、`UNCLEAR`，不输出或改写字段值。`FIELD_VALUE` 仍由 `AssistantConversationService.applyCollection()` 重新核对本人会话与设备、已保存的本轮原文、候选字段、联系方式格式、状态快照与版本、授权期限和当前目标；通过后原子应用服务端解析出的用户原文。没有授权时不能凭模型分类开启收集。
 
-`FACT` 也须由 `AssistantConversationService.applyObservation()` 重新核对归属、已保存的本轮用户消息、状态快照与版本、授权期限和当前目标；通过后仅用已保存用户原文填入 `extra`。模型不能提供替代字段值。信息齐全时最多准备草稿，创建工单仍须用户明确确认。并发变化或已知写入回滚返回保守说明；写入结果未知时提示沿用原咨询与 turnId 查回核对，不宣称确定未写入。
+`KNOWLEDGE_QUESTION` 进入既有知识流程，并禁止草稿写入工具；`OUT_OF_SCOPE` 引导回售后，`UNCLEAR` 及预算不足、超时、协议或服务失败均保持字段并澄清。显式关闭新模式也不会恢复未经用途检查的字面填值；新分类失败不会尝试旧分类器。默认开启仍需有效 AI 配置，真实调用共享既有次数、字节和超时预算；离线模式的聊天协议服务不可用，普通表单报修仍可使用。
+
+旧的 `ObservationIntentInterpreter` 仅作为兼容分支保留：必须显式关闭新模式，并设置默认 `false` 的 `ASSISTANT_OBSERVATION_SEMANTICS_ENABLED=true`，才对合格的等待空 `extra` 轮次提议 `FACT / QUESTION / UNCLEAR`。仅 `FACT` 可在 `applyObservation()` 重新核验后填入已保存用户原文；其他分类及失败均澄清，不转检索。完整配置见 [收集内容受限语义](collection-semantics.md)。
+
+两种模式信息齐全时最多准备草稿，创建工单仍须用户明确确认。并发变化或已知写入回滚返回保守说明；写入结果未知时提示沿用原咨询与 turnId 查回核对，不宣称确定未写入。
 
 建单前保存完整草稿，再由用户在页面明确确认。确认绑定客户、草稿版本和内容，内容改变使旧确认失效。确认消费、工单创建和首条事件在同一事务内完成；唯一约束与请求标识保证重复提交返回原工单。客服接单后记录负责人，关闭需要非空处理结果；转交保留原因和历史事件。
 

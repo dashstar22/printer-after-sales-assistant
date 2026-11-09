@@ -9,15 +9,85 @@ import local.printer.knowledge.RuleTopicCatalog;
 final class DialogueRouter {
     private DialogueRouter(){}
     record Decision(String layer,String intent,String reason,DialogueState state,
-                    EvidenceAnswerPolicy.Answer answer,boolean prepare,RuleTopicCatalog.Topic topic,boolean semantic){
+                    EvidenceAnswerPolicy.Answer answer,boolean prepare,RuleTopicCatalog.Topic topic,boolean semantic,
+                    boolean collectionSemantic,Map<String,String> candidates){
+        Decision {
+            candidates=Map.copyOf(candidates);
+        }
+        Decision(String layer,String intent,String reason,DialogueState state,EvidenceAnswerPolicy.Answer answer,boolean prepare,RuleTopicCatalog.Topic topic,boolean semantic){
+            this(layer,intent,reason,state,answer,prepare,topic,semantic,false,Map.of());
+        }
         Decision(String layer,String intent,String reason,DialogueState state,EvidenceAnswerPolicy.Answer answer,boolean prepare,RuleTopicCatalog.Topic topic){
             this(layer,intent,reason,state,answer,prepare,topic,false);
+        }
+        @Override public String toString(){
+            return "Decision[layer="+layer+", intent="+intent+", reason="+reason+", candidateFields="+candidates.keySet()+"]";
         }
     }
     private static final Map<String,String> LABELS=Map.of("故障描述","symptom","故障","symptom","现场补充信息","extra","现场","extra","联系人","contact","联系方式","contactMethod");
     private static final Pattern LABEL=Pattern.compile("^(故障描述|故障|现场补充信息|现场|联系人|联系方式)[：:]");
     private record Labeled(boolean recognized,Map<String,String> fields){}
     private static final Pattern CREATE=Pattern.compile("^(.*?)(?:请准备草稿|请准备报修|我要报修|申请报修|帮我报修)[。！!]?$",Pattern.DOTALL);
+    /** Production entry: literal syntax is a proposal, never proof that a field is meaningful. */
+    static Decision routeControlled(String id,long customer,long order,String turn,String input,DialogueState previous,String target,
+                                    LocalDateTime now,boolean observationSemantics,boolean collectionSemantics){
+        var base=route(id,customer,order,turn,input,previous,target,now,observationSemantics&&!collectionSemantics);
+        String text=businessText(input);
+        if("NONE".equals(target)){
+            var create=CREATE.matcher(text);
+            if(create.matches()&&"EXPLICIT_PREPARATION".equals(base.reason())&&(previous==null||!previous.active(now))){
+                String raw=create.group(1);
+                if(!raw.isEmpty()&&!raw.matches("(?s).*[，,；;。\\r\\n]\\s*$"))return base;
+                String prefix=raw.replaceFirst("[，,；;。\\s]+$","");
+                var parsed=literalCandidates(prefix);
+                if(parsed.recognized()&&parsed.fields()==null)return clarify(previous,"INVALID_LABELED_FIELDS");
+                Map<String,String> candidates=prefix.isEmpty()?Map.of():parsed.recognized()?parsed.fields():Map.of("symptom",normalizedLiteral(prefix));
+                var blank=new DialogueState(id,customer,order,"COLLECTING",null,null,null,null,"symptom",turn,
+                    now.plusMinutes(10),previous==null?1:previous.revision()+1,turn);
+                if(candidates.isEmpty())return collecting(blank,"EXPLICIT_PREPARATION");
+                return collectionProposal(blank,candidates,collectionSemantics);
+            }
+            if(previous!=null&&previous.active(now)&&"COLLECTING".equals(previous.phase())
+                    && ("LITERAL_FIELD_COLLECTION".equals(base.reason())||"AMBIGUOUS_FIELD".equals(base.reason())
+                        ||"AMBIGUOUS_COLLECTION_INPUT".equals(base.reason())||"INVALID_LABELED_FIELDS".equals(base.reason()))){
+                var parsed=literalCandidates(text);
+                if(parsed.recognized()&&parsed.fields()==null)return clarify(previous,"INVALID_LABELED_FIELDS");
+                if(previous.pendingField()==null&&!parsed.recognized())return clarify(previous,"COLLECTION_ALREADY_COMPLETE");
+                var candidates=parsed.recognized()?parsed.fields():Map.of(previous.pendingField(),normalizedLiteral(text));
+                return collectionProposal(previous,candidates,collectionSemantics);
+            }
+        }
+        if(collectionSemantics&&"NATURAL_LANGUAGE_FALLBACK".equals(base.reason())&&"UNRESOLVED".equals(base.intent()))
+            return new Decision("MODEL","UNRESOLVED","COLLECTION_SCOPE_PROPOSAL",base.state(),null,false,null,false,true,Map.of());
+        return base;
+    }
+    private static String normalizedLiteral(String value){return AssistantConversationService.normalized(value);}
+    private static Decision collectionProposal(DialogueState state,Map<String,String> candidates,boolean enabled){
+        if(!enabled)return new Decision("STATE","CLARIFY","COLLECTION_DISABLED",state,
+            new EvidenceAnswerPolicy.Answer("NEEDS_INPUT","当前对话内容校验未开启，本轮没有填入报修信息。请使用普通报修入口填写并核对内容。",List.of()),false,null);
+        return new Decision("MODEL","COLLECT_FIELDS","COLLECTION_SEMANTIC_PROPOSAL",state,null,false,null,false,true,candidates);
+    }
+    static Decision collectionClarification(DialogueState state,String reason){
+        String prompt=state==null||state.pendingField()==null?"请说明设备遇到的问题，或明确告诉我需要进行的售后操作。":
+            AssistantConversationService.missingPrompt(List.of(state.pendingField()));
+        return new Decision("MODEL","CLARIFY",reason,state,new EvidenceAnswerPolicy.Answer("NEEDS_INPUT",
+            "本轮没有填入报修信息。"+prompt,List.of()),false,null);
+    }
+    /** Parse only syntax. Relevance is decided later and no field is applied here. */
+    private static Labeled literalCandidates(String text){
+        String[] segments=text.split("\\r\\n|[；;\\r\\n]",-1);
+        boolean recognized=Arrays.stream(segments).anyMatch(segment->LABEL.matcher(normalizedLiteral(segment)).find());
+        if(!recognized)return new Labeled(false,null);
+        int end=segments.length;while(end>0&&normalizedLiteral(segments[end-1]).isEmpty())end--;
+        var result=new LinkedHashMap<String,String>();
+        for(int i=0;i<end;i++){
+            String segment=normalizedLiteral(segments[i]);var matcher=LABEL.matcher(segment);
+            if(!matcher.find())return new Labeled(true,null);
+            String field=LABELS.get(matcher.group(1)),value=normalizedLiteral(segment.substring(matcher.end()));
+            if(value.isEmpty()||result.putIfAbsent(field,value)!=null)return new Labeled(true,null);
+        }
+        return new Labeled(true,result);
+    }
     static Decision route(String id,long customer,long order,String turn,String input,DialogueState previous,String target,LocalDateTime now){
         return route(id,customer,order,turn,input,previous,target,now,false);
     }

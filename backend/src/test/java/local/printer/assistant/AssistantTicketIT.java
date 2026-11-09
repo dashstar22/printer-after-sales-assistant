@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Real HTTP/Security/SQL with explicitly simulated model protocol responses; never real-model evidence. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"ASSISTANT_READ_RETRIES=0", "AI_ENABLED=true", "AI_API_KEY=", "AI_CHAT_MODEL=", "QDRANT_URL=http://127.0.0.1:9"})
+    properties = {"ASSISTANT_COLLECTION_SEMANTICS_ENABLED=false", "ASSISTANT_READ_RETRIES=0", "AI_ENABLED=true", "AI_API_KEY=", "AI_CHAT_MODEL=", "QDRANT_URL=http://127.0.0.1:9"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AssistantTicketIT {
     static final Queue<String> replies=new ConcurrentLinkedQueue<>();

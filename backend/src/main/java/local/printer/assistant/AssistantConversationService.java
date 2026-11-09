@@ -71,6 +71,10 @@ public class AssistantConversationService {
     private String observationEvidenceDir="";
     @org.springframework.beans.factory.annotation.Value("${ASSISTANT_OBSERVATION_SEMANTICS_ENABLED:false}")
     private boolean observationSemantics;
+    @org.springframework.beans.factory.annotation.Value("${ASSISTANT_COLLECTION_SEMANTICS_ENABLED:true}")
+    private boolean collectionSemantics;
+    @org.springframework.beans.factory.annotation.Value("${ASSISTANT_COLLECTION_SEMANTICS_MODEL:}")
+    private String collectionSemanticsModel="";
 
     public AssistantConversationService(ConversationMapper mapper, ConversationService conversations, OrderService orders,
             DraftService drafts, KnowledgeRetrievalService retrieval, DependencyProperties config, PlatformTransactionManager tm,
@@ -277,7 +281,7 @@ public class AssistantConversationService {
             while(history.size()>1 && history.stream().mapToInt(m->m.content().length()).sum()>20000)history.remove(0);
             var baseline=target(id,customerId,conversation.orderId());
             var previous=mapper.dialogueState(id,customerId,conversation.orderId());
-            var decision=DialogueRouter.route(id,customerId,conversation.orderId(),turnId,content,previous,baseline.state(),user.createdAt(),observationSemantics);
+            var decision=DialogueRouter.routeControlled(id,customerId,conversation.orderId(),turnId,content,previous,baseline.state(),user.createdAt(),observationSemantics,collectionSemantics);
             if(decision.state()!=null&&!decision.state().equals(previous)){
                 if(previous==null)require(mapper.insertDialogueState(decision.state()));
                 else require(mapper.updateDialogueState(decision.state(),previous.revision()));
@@ -303,7 +307,30 @@ public class AssistantConversationService {
         String replyMode="MODEL".equals(decision.layer())?"MODEL_API":"SERVICE_GUIDANCE";
         String semanticKind="NOT_REQUESTED",semanticReason="NOT_REQUESTED";
         try {
-            if(decision.semantic()){
+            if(decision.collectionSemantic()){
+                if(state.query.clarification()||!decision.candidates().isEmpty()&&state.query.query()!=null){
+                    semanticReason="COLLECTION_REFERENCE_REJECTED";
+                    decision=DialogueRouter.collectionClarification(decision.state(),semanticReason);
+                }else if(state.query.query()==null){
+                    var proposal=CollectionIntentInterpreter.interpret(config.ai(),collectionSemanticsModel,
+                        decision.candidates().isEmpty()?null:decision.state().pendingField(),decision.candidates(),claim.user().content(),budget);
+                    semanticKind=proposal.kind().name();semanticReason=proposal.reason();
+                    if(proposal.kind()==CollectionIntentInterpreter.Kind.FIELD_VALUE){
+                        budget.check();decision=applyCollection(customerId,id,turnId,claim,budget);
+                    }else if(proposal.kind()==CollectionIntentInterpreter.Kind.KNOWLEDGE_QUESTION){
+                        knowledgeQuestion=true;state.semanticReadOnly=true;
+                        decision=new DialogueRouter.Decision("MODEL","KNOWLEDGE",proposal.reason(),decision.state(),null,false,null);
+                    }else if(proposal.kind()==CollectionIntentInterpreter.Kind.OUT_OF_SCOPE){
+                        String scope=ServiceDialoguePolicy.scope().text();
+                        if(decision.state()!=null&&"COLLECTING".equals(decision.state().phase())&&decision.state().pendingField()!=null)
+                            scope+=" 本轮没有填入报修信息。"+missingPrompt(List.of(decision.state().pendingField()));
+                        decision=new DialogueRouter.Decision("MODEL","OUT_OF_DOMAIN",proposal.reason(),decision.state(),
+                            new EvidenceAnswerPolicy.Answer("ANSWERED",scope,List.of()),false,null);
+                    }else decision=DialogueRouter.collectionClarification(decision.state(),proposal.reason());
+                }
+                state.managedState=decision.state();guidance=decision.answer();
+                if(guidance!=null&&"WRITE_RESULT_UNKNOWN".equals(guidance.status()))state.writeFailure="WRITE_RESULT_UNKNOWN";
+            }else if(decision.semantic()){
                 // Reference resolution is authoritative and cannot become a field-value source.
                 if(state.query.clarification()||state.query.query()!=null){
                     semanticReason="OBSERVATION_REFERENCE_REJECTED";
@@ -416,7 +443,7 @@ public class AssistantConversationService {
         finally {diagnostic.outcome(route,finalStatus,persisted,checkpointDraft.get(),budget.modelCalls(),budget.toolCalls());}
         var trace=new LinkedHashMap<String,Object>();trace.put("conversationId",id);trace.put("turnId",turnId);
         trace.put("routeLayer",decision.layer());trace.put("intent",decision.intent());trace.put("routeReason",decision.reason());trace.put("executionResult",route);
-        if(claim.decision().semantic()){trace.put("semanticKind",semanticKind);trace.put("semanticReason",semanticReason);}
+        if(claim.decision().semantic()||claim.decision().collectionSemantic()){trace.put("semanticKind",semanticKind);trace.put("semanticReason",semanticReason);}
         trace.put("mode",replyMode);trace.put("status",status);trace.put("modelCalls",budget.modelCalls());trace.put("toolCalls",budget.toolCalls());trace.put("tools",state.trace);
         trace.put("retrieval",state.retrievalTrace);
         if(state.answerValidation!=null)trace.put("answerValidation",state.answerValidation.name());
@@ -433,6 +460,44 @@ public class AssistantConversationService {
     private static DialogueRouter.Decision observationClarification(DialogueState state,String reason){
         return new DialogueRouter.Decision("MODEL","COLLECT_FIELDS",reason,state,
             new EvidenceAnswerPolicy.Answer("NEEDS_INPUT","本轮没有填入现场信息。请明确描述现场情况，或使用“现场：你的原话”补充；如果要咨询处理方法，请先回复“暂停填写”，再提问。",List.of()),false,null);
+    }
+    private DialogueRouter.Decision applyCollection(long customer,String id,String turn,Claim claim,AssistantExecution.Budget budget){
+        var snapshot=claim.decision().state();var candidates=claim.decision().candidates();
+        if(snapshot==null||candidates.isEmpty()||!FIELDS.containsAll(candidates.keySet())
+                ||candidates.entrySet().stream().anyMatch(e->e.getValue()==null||e.getValue().isBlank()
+                    ||e.getValue().length()>(Set.of("symptom","extra").contains(e.getKey())?2000:"contact".equals(e.getKey())?100:200))
+                ||candidates.containsKey("contactMethod")&&!CollectionIntentInterpreter.validContactMethod(candidates.get("contactMethod")))
+            return DialogueRouter.collectionClarification(snapshot,"COLLECTION_FIELDS_REJECTED");
+        var transaction=new TransactionTemplate(write.getTransactionManager());transaction.setTimeout(2);
+        try{
+            return transaction.execute(tx->{
+                budget.check();var owned=mapper.lockOwned(id,customer);budget.check();
+                if(owned==null||owned.orderId()!=claim.order())return DialogueRouter.collectionClarification(snapshot,"COLLECTION_OWNERSHIP_CHANGED");
+                orders.detail(customer,claim.order());
+                var latest=mapper.latestUser(id,customer);var actual=mapper.dialogueState(id,customer,claim.order());
+                if(latest==null||latest.id()!=claim.user().id()||!turn.equals(latest.turnId())||!claim.user().content().equals(latest.content())
+                        ||actual==null||!actual.equals(snapshot)||!"COLLECTING".equals(actual.phase()))
+                    return DialogueRouter.collectionClarification(actual,"COLLECTION_SNAPSHOT_CHANGED");
+                if(!"NONE".equals(target(id,customer,claim.order()).state()))return DialogueRouter.collectionClarification(actual,"COLLECTION_TARGET_CHANGED");
+                if(!actual.active(mapper.dialogueNow()))return DialogueRouter.collectionClarification(actual,"COLLECTION_AUTHORIZATION_EXPIRED");
+                var values=new ArrayList<>(actual.values());
+                candidates.forEach((field,literal)->values.set(FIELDS.indexOf(field),literal));
+                var next=actual.next("COLLECTING",values,turn);budget.check();
+                require(mapper.updateDialogueState(next,actual.revision()));budget.check();
+                if(next.missing().isEmpty())return new DialogueRouter.Decision("MODEL","PREPARE_REPAIR","COLLECTION_VALUE_APPLIED",next,null,true,null);
+                String prompt=missingPrompt(List.of(next.pendingField()));
+                var checkpoint=new ConversationResponse.Reply("MODEL_API","NEEDS_INPUT",prompt,List.of(),null,null);
+                require(mapper.complete(id,customer,turn,prompt,JSON.writeValueAsString(checkpoint)));budget.check();
+                return new DialogueRouter.Decision("MODEL","COLLECT_FIELDS","COLLECTION_VALUE_APPLIED",next,
+                    new EvidenceAnswerPolicy.Answer("NEEDS_INPUT",prompt,List.of()),false,null);
+            });
+        }catch(ConversationService.Conflict|OrderService.NotFound|org.springframework.dao.DataIntegrityViolationException|org.springframework.dao.ConcurrencyFailureException failure){
+            return DialogueRouter.collectionClarification(snapshot,"COLLECTION_APPLY_REJECTED");
+        }catch(org.springframework.dao.DataAccessException|org.springframework.transaction.TransactionException failure){
+            if(knownRollback(failure))return DialogueRouter.collectionClarification(snapshot,"COLLECTION_APPLY_REJECTED");
+            return new DialogueRouter.Decision("MODEL","COLLECT_FIELDS","COLLECTION_APPLY_UNKNOWN",snapshot,
+                new EvidenceAnswerPolicy.Answer("WRITE_RESULT_UNKNOWN","报修信息操作结果待确认；请读取原咨询并沿用原turnId查回，勿更换标识重复发送。",List.of()),false,null);
+        }
     }
     private DialogueRouter.Decision applyObservation(long customer,String id,String turn,Claim claim,AssistantExecution.Budget budget){
         var snapshot=claim.decision().state();
@@ -541,7 +606,7 @@ public class AssistantConversationService {
         private EvidenceAnswerPolicy.ValidationCode answerValidation;
         private List<ConversationResponse.Point> points=List.of();
         private KnowledgeQueryCompletion.Query query=new KnowledgeQueryCompletion.Query(null,"DIRECT_INPUT",false,0);
-        private boolean orderFound,pageRequired;
+        private boolean orderFound,pageRequired,semanticReadOnly;
         private DraftResponse draft;
         private List<String> draftFields;
         private final AssistantExecution.Budget budget;
@@ -708,6 +773,7 @@ public class AssistantConversationService {
         public String prepareRepairDraft(@P(value="故障描述原话",required=false) String symptom,
                 @P(value="现场补充原话",required=false) String extra,@P(value="用户给出的联系人原话",required=false) String contact,
                 @P(value="用户给出的联系方式原话",required=false) String contactMethod) {
+            if(semanticReadOnly)return reject("TOOL_REJECTED");
             var supplied=Arrays.asList(symptom,extra,contact,contactMethod);missing.clear();
             var values=new ArrayList<String>();
             boolean updating=edit!=null;

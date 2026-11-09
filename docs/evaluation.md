@@ -1,6 +1,6 @@
 # 评测方法、结果与局限
 
-检索与业务历史结果记录于 2026-11-03，受限语义专项补充于 2026-11-08。业务回归、真实供应商调用、回答质量和用户采用分别报告。健康检查、协议 fixture 或源码构建通过都不能代替真实模型质量证据。
+检索与业务历史结果记录于 2026-11-03，旧 extra 语义专项补充于 2026-11-08，收集内容语义专项补充于 2026-11-09。业务回归、真实供应商调用、回答质量和用户采用分别报告。健康检查、协议 fixture 或源码构建通过都不能代替真实模型质量证据。
 
 ## 40 问三配置对照
 
@@ -54,19 +54,30 @@ v2 仍有 S25、S27 两题预期 UNCLEAR、实际 QUESTION，均为事实夹提�
 
 随后另用 6 次真实模型调用完成六个预定合成场景的 HTTP/MySQL 联调，业务结果 6 PASS、0 FAIL、0 SKIP。C06 同样保留 UNCLEAR→QUESTION 的严格分类偏差；业务通过依据是状态保持和澄清行为。该联调与上述两轮分类是三个独立授权批次；详见 [专项验证范围](verification.md#受限现场语义专项2026-11-08)。
 
-0/24 只表示本固定集未观察到危险提议，6 个业务场景通过也不证明未见语句准确率、线上零误填或生产验收。样本未经独立人工盲审；生产默认开关继续关闭。
+0/24 只表示本固定集未观察到危险提议，6 个业务场景通过也不证明未见语句准确率、线上零误填或生产验收。样本未经独立人工盲审；本节旧模式的 `ASSISTANT_OBSERVATION_SEMANTICS_ENABLED` 默认仍为 `false`，当前新模式及其独立证据见下节。
 
 公开资产与离线入口：
 
 - [v1 固定题及原始规划](../validation/observation-semantics/README.md)、[共享评测适配器](../validation/observation-semantics/adapter/README.md)及 [E3 默认关闭的受控执行入口](../validation/observation-semantics/adapter/E3_README.md)。
-- [v2 修复回归包](../validation/observation-semantics-v2/README.md)包含当前源码指纹和 v1 历史快照；协议替身默认只访问本机回环地址，不使用数据库或真实模型。
+- [v2 修复回归包](../validation/observation-semantics-v2/README.md)包含 2026-11-08 对应版本的源码指纹和 v1 历史快照；协议替身默认只访问本机回环地址，不使用数据库或真实模型。冻结 manifest 和原资产保留，不随新增收集功能改写。
 
 ```sh
-python -X utf8 validation/observation-semantics-v2/verify.py
-python -X utf8 -m unittest discover -s validation/observation-semantics-v2 -p test_v2.py -v
+python -X utf8 validation/observation-semantics-v2/verify.py --historical-v1-only
 ```
 
-使用当前代码时，直接运行旧 v1 verifier 会因源码已修复而发现历史指纹差异；用 v2 verifier 核对当前与历史。完整本机替身执行需要 Java 17、Maven 已缓存依赖及本地构建的应用 JAR，命令见 v2 说明。真实逐题 raw 和六场景私有运行器不分发，公开资产不等于能够直接重放开发者本机的全部真实联调。
+上述命令只核对冻结 v1 资产与已保存的旧源码，不声明其与当前生产源码一致。当前新增收集功能已改变 `DialogueRouter` 等被指纹覆盖的源码，直接运行旧 v1 或完整 v2 verifier 会报告历史身份差异；这不应通过重写 manifest 消除。完整 v2 校验、单元与本机替身应在公开历史提交 [`476fbf3`](https://github.com/dashstar22/printer-after-sales-assistant/commit/476fbf305c7654b6838b6e35a3ff8f5ebe9738c0) 的独立检出目录，按该版本说明执行，需要 Java 17、Maven 已缓存依赖及对应应用 JAR。真实逐题 raw 和六场景私有运行器不分发，公开资产不等于能够直接重放开发者本机的全部真实联调。
+
+## 收集内容的受限语义分类（2026-11-09）
+
+新 `CollectionIntentInterpreter` 评估 `FIELD_VALUE / KNOWLEDGE_QUESTION / OUT_OF_SCOPE / UNCLEAR` 四分类，覆盖自由文本、标签字段、明确准备请求携带内容及普通自然语言分流。它与上述仅等待 extra 的三分类属于不同功能和题集，不能互换分数或合并分母。
+
+已有 [最终验收快照](collection-semantics-acceptance-20261109.md) 对应当时默认关闭的源码：606项单元／本机协议测试通过；固定24题包含23条真实 `qwen-plus` 分类和1条本地联系方式门禁，全部通过；另有8项隔离 HTTP/MySQL 集成通过，集成模型为本机协议替身。真实分类与数据库业务验证属于不同运行，不能称为真实模型与数据库的同次端到端验证。
+
+23条真实分类中，9条应填值均匹配 gold；14条不应填值中危险 `FIELD_VALUE` 提议为0。该24题在开发修复中已见，v1、v2及v3的原始失败记录和gold保留，最终v4从原题集开头完整重评，没有拼接多轮分数。两轮v3＋v4实际供应商调用45次；详细分类、用量及逐题结果见验收快照和 [结构化证据](evidence/collection-semantics/acceptance-20261109-v4.json)。这不证明未见输入准确率、实际线上误填率或生产并发。
+
+随后将 `ASSISTANT_COLLECTION_SEMANTICS_ENABLED` 默认值调整为 `true`。[默认开启记录](collection-semantics-default-on-20261109.md) 的已有单元／本机协议结果为607 PASS、0 FAIL、0 ERROR、0 SKIP，包含默认开启与显式关闭的实际 Spring 属性绑定验证；该次没有重新调用真实模型、连接数据库或更新日常实例。此前606项、23＋1及8项结果仍绑定原验收快照，不改记为默认开启后的真实重测。
+
+关闭新开关不会恢复旧的字面填槽路径。`LayeredDialogueIT`、`AssistantRepairIT`、`AssistantTicketIT` 等历史专用集成测试仍有依赖旧收集前置流程的场景，尚需迁移并在隔离数据库中实跑；仅固定开关或编译通过不足以确认它们当前通过。本次文档同步未执行这些数据库测试，不填报未经执行的失败或通过数字。当前行为与配置见 [功能说明](collection-semantics.md)，验证范围见 [验证记录](verification.md#收集内容受限语义专项2026-11-09)。
 
 ## 业务与工程验证
 

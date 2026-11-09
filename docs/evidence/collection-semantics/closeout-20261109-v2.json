@@ -1,0 +1,107 @@
+{
+  "status": "FAIL_INCOMPLETE",
+  "acceptance_passed": false,
+  "completed_at": "2026-11-09T06:39:34.396447900Z",
+  "model": "DashScope qwen-plus alias",
+  "cases_sha256": "9aa1ef23bb40bd3c163f154241a6755158edd549164b19c0f437f38370ff353a",
+  "manifest_sha256": "b393a7d210d16f060265efb2d352ea048ca1227ac2121c162350d196a08a9adc",
+  "gold_changed": false,
+  "unit": {
+    "executed": 591,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 591
+  },
+  "protocol_preflight": {
+    "scenarios": [
+      "budget",
+      "credential-echo",
+      "disconnect",
+      "http503",
+      "invalid-json",
+      "mismatch",
+      "redirect",
+      "success"
+    ],
+    "expected_scenarios_passed": 8,
+    "real_provider_calls": 0,
+    "database_calls": 0
+  },
+  "real_model": {
+    "model_pass": 4,
+    "local_gate_pass": 1,
+    "failed": 1,
+    "skipped": 18,
+    "dangerous_field_value": 0,
+    "stop_reason": "CLASSIFICATION_MISMATCH",
+    "stop_id": "C24",
+    "confirmed_complete_body_sent": 5,
+    "received_responses": 5,
+    "known_input_tokens": 3238,
+    "known_output_tokens": 34,
+    "usage_unknown_count": 0
+  },
+  "real_model_budget": {
+    "max_attempts": 23,
+    "actual_reserved_attempts": 5,
+    "concurrency": 1,
+    "retries": 0,
+    "per_case_timeout_ms": 5000,
+    "actual_sent_body_bytes": 17948
+  },
+  "failure": {
+    "id": "C24",
+    "input": "我喜欢吃汉堡，请准备报修",
+    "expected": "OUT_OF_SCOPE",
+    "actual": "UNCLEAR",
+    "reason": "COLLECTION_UNCLEAR",
+    "http_status": 200,
+    "raw_response_text": "{\"kind\":\"UNCLEAR\"}",
+    "dangerous_field_value": false,
+    "interpretation": "Strict classification mismatch; both paths refuse field application in current code. No business HTTP/DB execution in this run."
+  },
+  "integration": {
+    "test_class": "CollectionSemanticsIT",
+    "prepared": 8,
+    "compiled": true,
+    "executed": 0,
+    "junit_skipped": null,
+    "stage_status": "NOT_RUN_REAL_VALIDATION_FAILED",
+    "database_calls": 0,
+    "database_started": false,
+    "guard_check": {
+      "check": "FAIL_REAL_EVIDENCE_BLOCKS_DATABASE_INITIALIZATION",
+      "status": "PASS",
+      "runner_started_database": false,
+      "new_datadir_created": false,
+      "blocked_before_resource_creation": true,
+      "integration_tests_executed": 0
+    }
+  },
+  "previous_real_run_separate": {
+    "model_pass": 3,
+    "local_gate_pass": 1,
+    "failed": 1,
+    "skipped": 19,
+    "stop_id": "C22",
+    "confirmed_complete_body_sent": 4,
+    "not_combined_into_current_score": true
+  },
+  "limitations": [
+    "Seen development regression, not independent blind evaluation.",
+    "Only five expected OUT_OF_SCOPE model cases executed; positive field/knowledge cases not executed.",
+    "No measured database field-write error rate, production quality, lightweight-model or monetary cost claim."
+  ],
+  "default_collection_semantics_enabled": false,
+  "committed": false,
+  "pushed": false,
+  "production_and_test_source_sha256": {
+    "backend/src/main/java/local/printer/assistant/CollectionIntentInterpreter.java": "958ade8162f616c050c48b165252a692d99611f8baf71fe519d9c5eb446b7f8b",
+    "backend/src/test/java/local/printer/assistant/CollectionIntentInterpreterTest.java": "6a7ea61548d5ce966ed4b85e42794a081aba3d64db0099d54136ccda2fac4a4d",
+    "backend/src/test/java/local/printer/assistant/CollectionSemanticServiceTest.java": "38c9d5ebc7d87b3a84a42d57b192765e77c425b58d6bd8f179e87dbb7553e09d",
+    "backend/src/test/java/local/printer/assistant/CollectionSemanticsIT.java": "64a58a9a0fda9d301a5b295524af50e22c9b51bde9c4b2f956e1619efc44b54c"
+  },
+  "publication_note": "Historical evidence snapshot; host paths, process identity and local command removed. Original outcomes, dates, model usage, source hashes and default flags retained.",
+  "private_original_sha256": "b911269399c8c9a706d69b86e50e3c476d79e02bfc25bb56ab96907833648b25"
+}

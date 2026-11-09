@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 
 /** Real HTTP, Security, MySQL and transactions; semantic output is a loopback protocol fixture, not real AI. */
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={
-    "server.address=127.0.0.1","AI_ENABLED=true","ASSISTANT_OBSERVATION_SEMANTICS_ENABLED=true","ASSISTANT_READ_RETRIES=0",
+    "server.address=127.0.0.1","AI_ENABLED=true","ASSISTANT_COLLECTION_SEMANTICS_ENABLED=false","ASSISTANT_OBSERVATION_SEMANTICS_ENABLED=true","ASSISTANT_READ_RETRIES=0",
     "LOGIN_REQUESTS_PER_MINUTE=10000","AI_REQUESTS_PER_MINUTE=10000","AI_IP_REQUESTS_PER_MINUTE=10000",
     "QDRANT_URL=http://127.0.0.1:9","REDIS_ENABLED=false","KNOWLEDGE_HYBRID_ENABLED=false","KNOWLEDGE_JOBS_ENABLED=false",
     "KNOWLEDGE_MAINTENANCE_ENABLED=false","EMAIL_ENABLED=false","AUTOMATION_ENABLED=false","CONTROLLED_DISPATCH_REQUIRED=false",

@@ -1,0 +1,210 @@
+{
+  "status": "PASS",
+  "scope": "Current fixed seen-development classifier regression plus isolated business HTTP/MySQL with local model protocol fixtures",
+  "unit": {
+    "total": 606,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 606
+  },
+  "final_model_categories": {
+    "OUT_OF_SCOPE": 6,
+    "FIELD_VALUE": 9,
+    "KNOWLEDGE_QUESTION": 4,
+    "UNCLEAR": 4
+  },
+  "real_model": {
+    "model_pass": 23,
+    "local_gate_pass": 1,
+    "failed": 0,
+    "skipped": 0,
+    "dangerous_field_value": 0,
+    "confirmed_complete_body_sent": 23,
+    "received_responses": 23,
+    "known_input_tokens": 21563,
+    "known_output_tokens": 156,
+    "usage_unknown_count": 0,
+    "manifest_sha256": "c73e56fe83fa51625faa21bd2d4fd3ccb2b775e7ea73680159f821b3a57e58a1"
+  },
+  "real_model_config": {
+    "provider": "DashScope",
+    "model_alias": "qwen-plus",
+    "temperature": 0,
+    "max_tokens": 128,
+    "concurrency": 1,
+    "retries": 0,
+    "per_case_timeout_ms": 5000,
+    "max_attempts_per_round": 23
+  },
+  "real_body_bytes": 113973,
+  "dangerous_proposal_metric": {
+    "dangerous": 0,
+    "non_field_model_cases": 14,
+    "expected_field_cases": 9
+  },
+  "cases_sha256": "9aa1ef23bb40bd3c163f154241a6755158edd549164b19c0f437f38370ff353a",
+  "gold_changed": false,
+  "protocol_preflight": {
+    "scenarios": [
+      "budget",
+      "credential-echo",
+      "disconnect",
+      "http503",
+      "invalid-json",
+      "mismatch",
+      "redirect",
+      "success"
+    ],
+    "expected_scenarios_passed": 8,
+    "real_provider_calls": 0
+  },
+  "shared_budget": {
+    "max_rounds": 3,
+    "max_reserved_attempts": 69,
+    "rounds_executed": 2,
+    "conservative_reserved_attempts": 46,
+    "confirmed_actual_calls": 45,
+    "input_tokens": 40144,
+    "output_tokens": 309,
+    "failed_round_not_refunded": true
+  },
+  "real_rounds": [
+    {
+      "asset_version": "collection-semantics-dev-20261109-v3",
+      "status": "FAIL_INCOMPLETE",
+      "model_pass": 21,
+      "local_gate_pass": 1,
+      "failed": 1,
+      "skipped": 1,
+      "stop_id": "C08",
+      "calls": 22,
+      "manifest_sha256": "e2c73b3d73d4701acd88f298fc317c9df1297f1fa811267f006c530ec2deada1"
+    },
+    {
+      "asset_version": "collection-semantics-dev-20261109-v4",
+      "status": "PASS",
+      "model_pass": 23,
+      "local_gate_pass": 1,
+      "failed": 0,
+      "skipped": 0,
+      "stop_id": null,
+      "calls": 23,
+      "manifest_sha256": "c73e56fe83fa51625faa21bd2d4fd3ccb2b775e7ea73680159f821b3a57e58a1"
+    }
+  ],
+  "integration": {
+    "status": "PASS",
+    "suite": "CollectionSemanticsIT",
+    "schema": "printer_dialogue_it_20261109_150844_a23ada",
+    "mysql": "8.0.44 native isolated datadir",
+    "mysql_port": 56368,
+    "model": "test-owned loopback protocol fixture",
+    "real_provider_calls": 0,
+    "existing_database_connections": 0,
+    "data_retained": true,
+    "preflight": {
+      "database_identity_verified": true,
+      "account_identity_verified": true,
+      "datadir_identity_verified": true,
+      "initial_table_count": 0
+    },
+    "maven_exit_code": 0,
+    "tests": {
+      "total": 8,
+      "PASS": 8,
+      "FAIL": 0,
+      "ERROR": 0,
+      "SKIP": 0,
+      "cases": [
+        {
+          "name": "foreignSessionAndMissingCsrfCannotReachClassificationOrChangeState",
+          "status": "PASS"
+        },
+        {
+          "name": "collectingAllFieldsPreparesOnlyADraftAndRequiresAnExplicitIdempotentPageOperation",
+          "status": "PASS"
+        },
+        {
+          "name": "unclearDoesNotWriteAFieldOrPrepareADraft",
+          "status": "PASS"
+        },
+        {
+          "name": "approvedLabeledFieldsApplyAtomicallyAndPersistTheCurrentUserLiteral",
+          "status": "PASS"
+        },
+        {
+          "name": "anInvalidContactMethodMakesNoModelCallAndCannotCompleteTheDraft",
+          "status": "PASS"
+        },
+        {
+          "name": "c22OutOfScopeRejectsTheWholeLabeledMessageIncludingItsOtherwiseUsableContact",
+          "status": "PASS"
+        },
+        {
+          "name": "knowledgeClassificationUsesTheExistingReadOnlySearchWithoutFillingThePendingField",
+          "status": "PASS"
+        },
+        {
+          "name": "providerFailureStopsWithoutRetryOrLiteralFallback",
+          "status": "PASS"
+        }
+      ]
+    },
+    "migrations": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14",
+      "15"
+    ],
+    "email_sends": 0,
+    "external_calls_by_kind": [
+      "CHAT\t10"
+    ],
+    "database_table_count": 46,
+    "route_trace": {
+      "turns": 17,
+      "layers": [
+        "MODEL",
+        "STATE"
+      ],
+      "non_model_route_chat_calls": 0,
+      "protocol_model_calls": 10
+    },
+    "owned_maven_stopped": true,
+    "graceful_mysql_shutdown": true,
+    "owned_mysql_stopped": true,
+    "cleanup_errors": [],
+    "worktree_unchanged_during_run": true,
+    "finished_at": "2026-11-09T15:09:20.902589+08:00"
+  },
+  "production_and_test_source_sha256": {
+    "backend/src/main/java/local/printer/assistant/CollectionIntentInterpreter.java": "cb00898800529341d64f8ef540beb0a1cacff9dd222f2aa6f819663a09e1459c",
+    "backend/src/test/java/local/printer/assistant/CollectionDialogueRouterTest.java": "d5cd9c354c7c131716d17809f67ca2cc1b70330cc38db79a5a3e3064256970aa",
+    "backend/src/test/java/local/printer/assistant/CollectionIntentInterpreterTest.java": "3ae19df02702a6f6bf835983b09d43dbf0876b0cca85d948c52691a3e25cf16d",
+    "backend/src/test/java/local/printer/assistant/CollectionSemanticServiceTest.java": "5dd778efbd0806cbda2d6a220228bffeb5714b2cb93a384a85e05f48b7d3ed24",
+    "backend/src/test/java/local/printer/assistant/CollectionSemanticsIT.java": "64a58a9a0fda9d301a5b295524af50e22c9b51bde9c4b2f956e1619efc44b54c"
+  },
+  "limitations": [
+    "Seen development regression; not independent blind evaluation or production accuracy.",
+    "Real classifier evaluation and business HTTP/MySQL protocol-fixture integration are separate runs.",
+    "No lightweight-model selection or supplier invoice/monetary cost verification.",
+    "Page confirmation means protected HTTP API, not browser click automation."
+  ],
+  "default_collection_semantics_enabled": false,
+  "committed": false,
+  "pushed": false,
+  "publication_note": "Historical evidence snapshot; host paths, process identity and local command removed. Original outcomes, dates, model usage, source hashes and default flags retained.",
+  "private_original_sha256": "c9a41b6875f13a3a513f1a80fd4729cd9ee0e12abde2eb6ead9d10566fe2ae8d"
+}

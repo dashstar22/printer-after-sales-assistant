@@ -20,7 +20,7 @@ import tools.jackson.databind.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Real HTTP, Security, MySQL and state transactions. Model is an explicit loopback protocol fixture. */
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"AI_ENABLED=true","ASSISTANT_READ_RETRIES=0","QDRANT_URL=http://127.0.0.1:9","ASSISTANT_OBSERVATION_SEMANTICS_ENABLED=false","server.address=127.0.0.1"})
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"AI_ENABLED=true","ASSISTANT_READ_RETRIES=0","QDRANT_URL=http://127.0.0.1:9","ASSISTANT_COLLECTION_SEMANTICS_ENABLED=false","ASSISTANT_OBSERVATION_SEMANTICS_ENABLED=false","server.address=127.0.0.1"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LayeredDialogueIT {
     static final ObjectMapper JSON=new ObjectMapper();

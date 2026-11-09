@@ -22,7 +22,7 @@ import tools.jackson.databind.*;
 
 /** Real HTTP/auth/CSRF/MySQL; Chat and retrieval are explicit controlled fixtures, not supplier evidence. */
 @EnabledIfEnvironmentVariable(named="PHASE5_DB_URL",matches=".+")
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"AI_ENABLED=true","ASSISTANT_READ_RETRIES=0","REDIS_ENABLED=true","AI_REQUESTS_PER_MINUTE=500","AI_IP_REQUESTS_PER_MINUTE=1000","LOGIN_REQUESTS_PER_MINUTE=500","EMAIL_ENABLED=true","EMAIL_SITE_ORIGIN=https://phase5.invalid","EMAIL_FROM=service@phase5.invalid","EMAIL_SMTP_HOST=127.0.0.1","EMAIL_SMTP_PORT=9","EMAIL_CAPTURE_ONLY=true","EMAIL_SMTP_STARTTLS=false"})
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"AI_ENABLED=true","ASSISTANT_COLLECTION_SEMANTICS_ENABLED=false","ASSISTANT_READ_RETRIES=0","REDIS_ENABLED=true","AI_REQUESTS_PER_MINUTE=500","AI_IP_REQUESTS_PER_MINUTE=1000","LOGIN_REQUESTS_PER_MINUTE=500","EMAIL_ENABLED=true","EMAIL_SITE_ORIGIN=https://phase5.invalid","EMAIL_FROM=service@phase5.invalid","EMAIL_SMTP_HOST=127.0.0.1","EMAIL_SMTP_PORT=9","EMAIL_CAPTURE_ONLY=true","EMAIL_SMTP_STARTTLS=false"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Phase5ApiTest {
     static final ObjectMapper JSON=new ObjectMapper();static HttpServer supplier;
